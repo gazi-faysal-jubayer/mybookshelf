@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { BookOpen, Library, Users, Heart, ArrowRight, Star, BookMarked, Sparkles } from "lucide-react";
+import { BookOpen, Library, Users, Heart, ArrowRight, Star, BookMarked, Sparkles, Menu, X } from "lucide-react";
+import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/sheet";
+import { Button } from "@/components/ui/button";
 
 export default function Home() {
     return (
@@ -13,6 +15,7 @@ export default function Home() {
                             <span className="text-xl font-semibold">MyBookshelf</span>
                         </Link>
 
+                        {/* Desktop Navigation */}
                         <div className="hidden md:flex items-center gap-8">
                             <Link href="#features" className="text-muted-foreground hover:text-foreground link-underline transition-colors">
                                 Features
@@ -26,18 +29,59 @@ export default function Home() {
                         </div>
 
                         <div className="flex items-center gap-4">
+                            {/* Desktop Auth Buttons */}
                             <Link
                                 href="/login"
-                                className="text-foreground hover:text-primary transition-colors font-medium"
+                                className="hidden sm:block text-foreground hover:text-primary transition-colors font-medium"
                             >
                                 Sign In
                             </Link>
                             <Link
                                 href="/register"
-                                className="btn-warm text-sm"
+                                className="hidden sm:block btn-warm text-sm"
                             >
                                 Get Started
                             </Link>
+
+                            {/* Mobile Menu */}
+                            <Sheet>
+                                <SheetTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="md:hidden">
+                                        <Menu className="h-6 w-6" />
+                                        <span className="sr-only">Open menu</span>
+                                    </Button>
+                                </SheetTrigger>
+                                <SheetContent side="right" className="w-[300px] sm:w-[350px]">
+                                    <nav className="flex flex-col gap-4 mt-8">
+                                        <SheetClose asChild>
+                                            <Link href="#features" className="text-lg font-medium py-2 px-4 rounded-lg hover:bg-muted transition-colors">
+                                                Features
+                                            </Link>
+                                        </SheetClose>
+                                        <SheetClose asChild>
+                                            <Link href="#how-it-works" className="text-lg font-medium py-2 px-4 rounded-lg hover:bg-muted transition-colors">
+                                                How it Works
+                                            </Link>
+                                        </SheetClose>
+                                        <SheetClose asChild>
+                                            <Link href="#testimonials" className="text-lg font-medium py-2 px-4 rounded-lg hover:bg-muted transition-colors">
+                                                Testimonials
+                                            </Link>
+                                        </SheetClose>
+                                        <div className="border-t border-border my-4" />
+                                        <SheetClose asChild>
+                                            <Link href="/login" className="text-lg font-medium py-2 px-4 rounded-lg hover:bg-muted transition-colors">
+                                                Sign In
+                                            </Link>
+                                        </SheetClose>
+                                        <SheetClose asChild>
+                                            <Link href="/register" className="btn-warm text-center">
+                                                Get Started
+                                            </Link>
+                                        </SheetClose>
+                                    </nav>
+                                </SheetContent>
+                            </Sheet>
                         </div>
                     </div>
                 </div>
@@ -321,22 +365,40 @@ export default function Home() {
             </section>
 
             {/* Footer */}
-            <footer className="py-12 px-4 sm:px-6 lg:px-8 border-t border-border">
+            <footer className="py-12 px-4 sm:px-6 lg:px-8 border-t border-border bg-secondary/20">
                 <div className="max-w-7xl mx-auto">
-                    <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-                        <div className="flex items-center gap-2">
-                            <BookOpen className="h-6 w-6 text-primary" />
-                            <span className="font-semibold">MyBookshelf</span>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-4">
+                        {/* Logo & Description */}
+                        <div className="text-center md:text-left">
+                            <Link href="/" className="flex items-center gap-2 justify-center md:justify-start">
+                                <BookOpen className="h-6 w-6 text-primary" />
+                                <span className="font-semibold text-lg">MyBookshelf</span>
+                            </Link>
+                            <p className="text-sm text-muted-foreground mt-2">
+                                Your cozy digital library companion.
+                            </p>
                         </div>
 
-                        <div className="flex items-center gap-6 text-sm text-muted-foreground">
-                            <Link href="#" className="hover:text-foreground transition-colors">Privacy</Link>
-                            <Link href="#" className="hover:text-foreground transition-colors">Terms</Link>
-                            <Link href="#" className="hover:text-foreground transition-colors">Contact</Link>
+                        {/* Links */}
+                        <div className="flex flex-wrap justify-center gap-6 text-sm">
+                            <Link href="#" className="text-muted-foreground hover:text-foreground transition-colors py-2">
+                                Privacy
+                            </Link>
+                            <Link href="#" className="text-muted-foreground hover:text-foreground transition-colors py-2">
+                                Terms
+                            </Link>
+                            <Link href="#" className="text-muted-foreground hover:text-foreground transition-colors py-2">
+                                Contact
+                            </Link>
+                            <Link href="#" className="text-muted-foreground hover:text-foreground transition-colors py-2">
+                                About
+                            </Link>
                         </div>
 
-                        <div className="text-sm text-muted-foreground">
-                            © 2024 MyBookshelf. Made with ❤️ for book lovers.
+                        {/* Copyright */}
+                        <div className="text-center md:text-right text-sm text-muted-foreground">
+                            <p>© {new Date().getFullYear()} MyBookshelf.</p>
+                            <p className="mt-1">Made with ❤️ for book lovers.</p>
                         </div>
                     </div>
                 </div>
