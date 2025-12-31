@@ -1,13 +1,5 @@
 import mongoose from "mongoose";
 
-const MONGODB_URI = process.env.DATABASE_URL;
-
-if (!MONGODB_URI) {
-    throw new Error(
-        "Please define the DATABASE_URL environment variable inside .env.local"
-    );
-}
-
 /**
  * Global is used here to maintain a cached connection across hot reloads
  * in development. This prevents connections growing exponentially
@@ -34,12 +26,20 @@ async function connectDB() {
         return cached.conn;
     }
 
+    const MONGODB_URI = process.env.DATABASE_URL;
+
+    if (!MONGODB_URI) {
+        throw new Error(
+            "Please define the DATABASE_URL environment variable inside .env.local"
+        );
+    }
+
     if (!cached.promise) {
         const opts = {
             bufferCommands: false,
         };
 
-        cached.promise = mongoose.connect(MONGODB_URI!, opts).then((mongoose) => {
+        cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
             return mongoose;
         });
     }
