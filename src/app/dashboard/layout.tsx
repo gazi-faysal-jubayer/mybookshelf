@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { CircleUser, Menu, Package2, Search } from "lucide-react"
+import { CircleUser, Menu, Package2, Search, BookOpen, Compass, MessageSquare, Users } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -41,11 +41,11 @@ export default async function DashboardLayout({
             <header className="sticky top-0 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6 z-10">
                 <nav className="hidden flex-col gap-6 text-lg font-medium md:flex md:flex-row md:items-center md:gap-5 md:text-sm lg:gap-6">
                     <Link
-                        href="#"
+                        href="/dashboard"
                         className="flex items-center gap-2 text-lg font-semibold md:text-base"
                     >
-                        <Package2 className="h-6 w-6" />
-                        <span className="sr-only">My Bookshelf</span>
+                        <BookOpen className="h-6 w-6" />
+                        <span className="hidden lg:inline">BookKeeper</span>
                     </Link>
                     <Link
                         href="/dashboard"
@@ -54,28 +54,30 @@ export default async function DashboardLayout({
                         Dashboard
                     </Link>
                     <Link
-                        href="/books"
-                        className="text-muted-foreground transition-colors hover:text-foreground"
+                        href="/dashboard/discover"
+                        className="text-muted-foreground transition-colors hover:text-foreground flex items-center gap-1"
                     >
-                        Books
+                        <Compass className="h-4 w-4" />
+                        Discover
                     </Link>
                     <Link
-                        href="/collections"
+                        href="/dashboard/books"
+                        className="text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                        My Books
+                    </Link>
+                    <Link
+                        href="/dashboard/messages"
+                        className="text-muted-foreground transition-colors hover:text-foreground flex items-center gap-1"
+                    >
+                        <MessageSquare className="h-4 w-4" />
+                        Messages
+                    </Link>
+                    <Link
+                        href="/dashboard/collections"
                         className="text-muted-foreground transition-colors hover:text-foreground"
                     >
                         Collections
-                    </Link>
-                    <Link
-                        href="/dashboard/wishlist"
-                        className="text-muted-foreground transition-colors hover:text-foreground"
-                    >
-                        Wishlist
-                    </Link>
-                    <Link
-                        href="/analytics"
-                        className="text-muted-foreground transition-colors hover:text-foreground"
-                    >
-                        Analytics
                     </Link>
                 </nav>
                 <Sheet>
@@ -92,23 +94,37 @@ export default async function DashboardLayout({
                     <SheetContent side="left">
                         <nav className="grid gap-6 text-lg font-medium">
                             <Link
-                                href="#"
+                                href="/dashboard"
                                 className="flex items-center gap-2 text-lg font-semibold"
                             >
-                                <Package2 className="h-6 w-6" />
-                                <span className="sr-only">My Bookshelf</span>
+                                <BookOpen className="h-6 w-6" />
+                                BookKeeper
                             </Link>
                             <Link href="/dashboard" className="hover:text-foreground">
                                 Dashboard
                             </Link>
                             <Link
-                                href="/books"
-                                className="text-muted-foreground hover:text-foreground"
+                                href="/dashboard/discover"
+                                className="text-muted-foreground hover:text-foreground flex items-center gap-2"
                             >
-                                Books
+                                <Compass className="h-5 w-5" />
+                                Discover
                             </Link>
                             <Link
-                                href="/collections"
+                                href="/dashboard/books"
+                                className="text-muted-foreground hover:text-foreground"
+                            >
+                                My Books
+                            </Link>
+                            <Link
+                                href="/dashboard/messages"
+                                className="text-muted-foreground hover:text-foreground flex items-center gap-2"
+                            >
+                                <MessageSquare className="h-5 w-5" />
+                                Messages
+                            </Link>
+                            <Link
+                                href="/dashboard/collections"
                                 className="text-muted-foreground hover:text-foreground"
                             >
                                 Collections
@@ -120,7 +136,7 @@ export default async function DashboardLayout({
                                 Wishlist
                             </Link>
                             <Link
-                                href="/analytics"
+                                href="/dashboard/analytics"
                                 className="text-muted-foreground hover:text-foreground"
                             >
                                 Analytics
@@ -142,9 +158,17 @@ export default async function DashboardLayout({
                             <DropdownMenuLabel>My Account</DropdownMenuLabel>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem asChild>
+                                <Link href={`/dashboard/users/${user.id}`}>My Profile</Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild>
                                 <Link href="/dashboard/settings">Settings</Link>
                             </DropdownMenuItem>
-                            <DropdownMenuItem>Support</DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                                <Link href="/dashboard/wishlist">Wishlist</Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                                <Link href="/dashboard/analytics">Analytics</Link>
+                            </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <form
                                 action={async () => {
