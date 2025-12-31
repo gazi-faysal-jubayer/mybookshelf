@@ -91,13 +91,18 @@ export function BookForm({ initialData, bookId }: BookFormProps) {
                 await updateBook(bookId, data)
                 toast.success("Book updated successfully")
             } else {
-                await addBook(data)
+                const result = await addBook(data)
+                if (!result.success) {
+                    toast.error(result.error || "Failed to save book")
+                    return
+                }
                 toast.success("Book added successfully")
             }
             router.push("/dashboard")
             router.refresh()
         } catch (error) {
-            toast.error("Failed to save book")
+            const message = error instanceof Error ? error.message : "Failed to save book"
+            toast.error(message)
         }
     }
 

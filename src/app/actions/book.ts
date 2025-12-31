@@ -7,46 +7,52 @@ export async function addBook(data: any) {
     try {
         const user = await getUser()
         if (!user) {
-            throw new Error("Unauthorized")
+            return { success: false, error: "Unauthorized - please log in" }
         }
 
         const supabase = await createClient()
 
         // Transform nested objects to flat structure
-        const bookData = {
+        // Clean up undefined values - don't send them to Supabase
+        const bookData: Record<string, any> = {
             user_id: user.id,
             title: data.title,
             author: data.author,
-            isbn: data.isbn,
-            publisher: data.publisher,
-            publication_year: data.publication_year,
-            pages: data.pages,
-            language: data.language,
-            genre: data.genre ? (Array.isArray(data.genre) ? data.genre : [data.genre]) : [],
-            cover_image: data.cover_image,
-            description: data.description,
-            format: data.format,
-            condition: data.condition,
-            // Flatten purchase_info
-            purchase_date: data.purchase_info?.date,
-            purchase_price: data.purchase_info?.price,
-            purchase_location: data.purchase_info?.location,
-            purchase_currency: data.purchase_info?.currency || 'USD',
-            purchase_link: data.purchase_info?.link,
-            // Flatten borrowed_info
-            borrowed_owner_name: data.borrowed_info?.owner_name,
-            borrowed_borrow_date: data.borrowed_info?.borrow_date,
-            borrowed_due_date: data.borrowed_info?.due_date,
-            borrowed_return_date: data.borrowed_info?.return_date,
-            // Status fields
-            ownership_status: data.ownership_status || 'owned',
-            reading_status: data.reading_status || 'to_read',
-            lending_status: data.lending_status || 'available',
-            rating: data.rating,
-            review: data.review,
-            tags: data.tags || [],
-            notes: data.notes,
         }
+
+        // Only add optional fields if they have values
+        if (data.isbn) bookData.isbn = data.isbn
+        if (data.publisher) bookData.publisher = data.publisher
+        if (data.publication_year) bookData.publication_year = data.publication_year
+        if (data.pages) bookData.pages = data.pages
+        if (data.language) bookData.language = data.language
+        if (data.genre) bookData.genre = Array.isArray(data.genre) ? data.genre : [data.genre]
+        if (data.cover_image) bookData.cover_image = data.cover_image
+        if (data.description) bookData.description = data.description
+        if (data.format) bookData.format = data.format
+        if (data.condition) bookData.condition = data.condition
+        if (data.ownership_status) bookData.ownership_status = data.ownership_status
+        if (data.reading_status) bookData.reading_status = data.reading_status
+        if (data.lending_status) bookData.lending_status = data.lending_status
+        if (data.rating !== undefined && data.rating !== null) bookData.rating = data.rating
+        if (data.review) bookData.review = data.review
+        if (data.tags && data.tags.length > 0) bookData.tags = data.tags
+        if (data.notes) bookData.notes = data.notes
+
+        // Flatten purchase_info
+        if (data.purchase_info?.date) bookData.purchase_date = data.purchase_info.date
+        if (data.purchase_info?.price) bookData.purchase_price = data.purchase_info.price
+        if (data.purchase_info?.location) bookData.purchase_location = data.purchase_info.location
+        if (data.purchase_info?.currency) bookData.purchase_currency = data.purchase_info.currency
+        if (data.purchase_info?.link) bookData.purchase_link = data.purchase_info.link
+
+        // Flatten borrowed_info
+        if (data.borrowed_info?.owner_name) bookData.borrowed_owner_name = data.borrowed_info.owner_name
+        if (data.borrowed_info?.borrow_date) bookData.borrowed_borrow_date = data.borrowed_info.borrow_date
+        if (data.borrowed_info?.due_date) bookData.borrowed_due_date = data.borrowed_info.due_date
+        if (data.borrowed_info?.return_date) bookData.borrowed_return_date = data.borrowed_info.return_date
+
+        console.log("Adding book with data:", JSON.stringify(bookData, null, 2))
 
         const { data: newBook, error } = await supabase
             .from('books')
@@ -54,9 +60,13 @@ export async function addBook(data: any) {
             .select('id')
             .single()
 
-        if (error || !newBook) {
+        if (error) {
             console.error("Supabase error:", error)
-            throw new Error("Failed to add book")
+            return { success: false, error: `Database error: ${error.message}` }
+        }
+
+        if (!newBook) {
+            return { success: false, error: "Book was not created - no data returned" }
         }
 
         revalidatePath("/dashboard")
@@ -65,7 +75,8 @@ export async function addBook(data: any) {
         return { success: true, bookId: newBook.id }
     } catch (error) {
         console.error("Failed to add book:", error)
-        throw new Error("Failed to add book")
+        const message = error instanceof Error ? error.message : "Unknown error occurred"
+        return { success: false, error: message }
     }
 }
 
@@ -80,7 +91,7 @@ export async function updateBook(id: string, data: any) {
 
         // Transform nested objects to flat structure
         const bookData: any = {}
-        
+
         // Only include fields that are provided
         if (data.title !== undefined) bookData.title = data.title
         if (data.author !== undefined) bookData.author = data.author
