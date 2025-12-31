@@ -46,13 +46,20 @@ export async function updateSession(request: NextRequest) {
         return NextResponse.redirect(url)
     }
 
-    // Redirect logged in users away from auth pages
+    // Redirect logged in users away from auth pages and root
     const authRoutes = ['/login', '/register']
     const isAuthRoute = authRoutes.some(route => 
         request.nextUrl.pathname === route
     )
 
     if (isAuthRoute && user) {
+        const url = request.nextUrl.clone()
+        url.pathname = '/dashboard'
+        return NextResponse.redirect(url)
+    }
+
+    // Redirect logged in users from root to dashboard
+    if (request.nextUrl.pathname === '/' && user) {
         const url = request.nextUrl.clone()
         url.pathname = '/dashboard'
         return NextResponse.redirect(url)
