@@ -1,7 +1,8 @@
 "use client"
 
+import { useState, useEffect } from "react";
 import { UploadButton } from "@/lib/uploadthing";
-import { X, ImageIcon } from "lucide-react";
+import { X, ImageIcon, Loader2 } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -13,6 +14,13 @@ interface ImageUploadProps {
 }
 
 export function ImageUpload({ value, onChange, endpoint }: ImageUploadProps) {
+    // Prevent hydration mismatch by only rendering UploadButton on client
+    const [isMounted, setIsMounted] = useState(false);
+
+    useEffect(() => {
+        setIsMounted(true);
+    }, []);
+
     if (value) {
         return (
             <div className="relative flex items-center justify-center w-full h-48 border rounded-md overflow-hidden bg-muted/30">
@@ -33,6 +41,16 @@ export function ImageUpload({ value, onChange, endpoint }: ImageUploadProps) {
                 </Button>
             </div>
         )
+    }
+
+    // Show loading state until client mounts
+    if (!isMounted) {
+        return (
+            <div className="flex flex-col items-center justify-center w-full h-48 border border-dashed rounded-md bg-muted/10">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                <p className="text-sm text-muted-foreground mt-2">Loading uploader...</p>
+            </div>
+        );
     }
 
     return (
