@@ -16,28 +16,13 @@ interface Message {
     content: string
     message_type: string
     created_at: string
-    sender: {
-        id: string
-        username?: string
-        full_name?: string
-        profile_picture?: string
-    }
+    sender: any
 }
 
 interface ChatAreaProps {
     conversationId: string
-    conversation: {
-        id: string
-        is_group: boolean
-        title?: string
-        otherUser?: {
-            id: string
-            username?: string
-            full_name?: string
-            profile_picture?: string
-        }
-    }
-    initialMessages: Message[]
+    conversation: any
+    initialMessages: any[]
     currentUserId: string
     hasMore: boolean
 }
