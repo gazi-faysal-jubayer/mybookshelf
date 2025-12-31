@@ -76,7 +76,6 @@ export function ProfileForm({ defaultValues }: ProfileFormProps) {
                                     <ImageUpload
                                         value={field.value}
                                         onChange={field.onChange}
-                                        endpoint="imageUploader"
                                     />
                                 </div>
                             </FormControl>

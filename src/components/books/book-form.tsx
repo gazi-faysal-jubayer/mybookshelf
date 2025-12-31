@@ -115,7 +115,6 @@ export function BookForm({ initialData, bookId }: BookFormProps) {
                                     <ImageUpload
                                         value={field.value}
                                         onChange={field.onChange}
-                                        endpoint="imageUploader"
                                     />
                                 </div>
                             </FormControl>
