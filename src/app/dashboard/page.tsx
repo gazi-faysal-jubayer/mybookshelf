@@ -11,29 +11,33 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Separator } from "@/components/ui/separator"
-import Book from "@/models/Book"
-import connectDB from "@/lib/db"
+import { createClient, getUserWithProfile } from "@/lib/supabase/server"
 import { BookCard } from "@/components/books/book-card"
-import { auth } from "@/auth"
 import { RecentActivity } from "@/components/dashboard/recent-activity"
 
 export default async function BooksPage() {
-    await connectDB()
-    const session = await auth()
+    const supabase = await createClient()
+    const userWithProfile = await getUserWithProfile()
 
     // Fetch books for the current user
-    const books = await Book.find({ user_id: session?.user?.id }).sort({ createdAt: -1 }).lean()
+    const { data: books } = await supabase
+        .from('books')
+        .select('*')
+        .eq('user_id', userWithProfile?.id || '')
+        .order('created_at', { ascending: false })
+
+    const booksList = books || []
 
     return (
         <div className="flex flex-col gap-8">
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
                 <RecentActivity />
                 <div className="col-span-4 lg:col-span-4 flex flex-col justify-center p-6 border rounded-lg bg-card shadow-sm">
-                    <h3 className="text-lg font-medium">Welcome back, {session?.user?.name || "Reader"}!</h3>
+                    <h3 className="text-lg font-medium">Welcome back, {userWithProfile?.profile?.full_name || userWithProfile?.email?.split('@')[0] || "Reader"}!</h3>
                     <p className="text-sm text-muted-foreground mt-2">
-                        You have {books.length} books in your collection.
-                        {books.filter((b: any) => b.reading_status === "currently_reading").length > 0
-                            ? ` You are currently reading ${books.filter((b: any) => b.reading_status === "currently_reading").length} books.`
+                        You have {booksList.length} books in your collection.
+                        {booksList.filter((b: any) => b.reading_status === "currently_reading").length > 0
+                            ? ` You are currently reading ${booksList.filter((b: any) => b.reading_status === "currently_reading").length} books.`
                             : " Ready to start a new adventure?"}
                     </p>
                 </div>
@@ -78,7 +82,7 @@ export default async function BooksPage() {
             </div>
             <Separator />
 
-            {books.length === 0 ? (
+            {booksList.length === 0 ? (
                 <div className="flex flex-col items-center justify-center min-h-[400px] gap-4 rounded-lg border border-dashed p-8 text-center animate-in fade-in-50">
                     <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-muted">
                         <Plus className="h-10 w-10 text-muted-foreground" />
@@ -93,8 +97,8 @@ export default async function BooksPage() {
                 </div>
             ) : (
                 <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {books.map((book) => (
-                        <BookCard key={book._id.toString()} book={{ ...book, _id: book._id.toString() }} />
+                    {booksList.map((book) => (
+                        <BookCard key={book.id} book={{ ...book, _id: book.id }} />
                     ))}
                 </div>
             )}

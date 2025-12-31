@@ -54,10 +54,10 @@ export function AddToCollectionMenuItem({ bookId }: { bookId: string }) {
                 ) : (
                     collections.map((collection) => (
                         <DropdownMenuItem
-                            key={collection._id}
-                            onClick={() => handleAddToCollection(collection._id)}
+                            key={collection.id}
+                            onClick={() => handleAddToCollection(collection.id)}
                         >
-                            {collection.books?.includes(bookId) && <Check className="mr-2 h-4 w-4" />}
+                            {collection.books?.some((b: any) => b.book_id === bookId) && <Check className="mr-2 h-4 w-4" />}
                             {collection.name}
                         </DropdownMenuItem>
                     ))

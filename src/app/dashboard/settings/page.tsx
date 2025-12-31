@@ -1,26 +1,28 @@
-import { auth } from "@/auth"
-import connectDB from "@/lib/db"
-import User from "@/models/User"
+import { createClient, getUser } from "@/lib/supabase/server"
 import { ProfileForm } from "@/components/settings/profile-form"
 import { Separator } from "@/components/ui/separator"
 
 export default async function SettingsPage() {
-    const session = await auth()
-    if (!session?.user?.id) return null
+    const user = await getUser()
+    if (!user) return null
 
-    await connectDB()
+    const supabase = await createClient()
 
-    const user = await User.findById(session.user.id).lean()
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single()
 
-    if (!user) return <div>User not found</div>
+    if (!profile) return <div>User not found</div>
 
     // Sanitize user object for client component
     const defaultValues = {
-        full_name: user.full_name || "",
-        profile_picture: user.profile_picture || "",
-        bio: user.bio || "",
-        location: user.location || "",
-        favorite_genre: user.favorite_genre || "",
+        full_name: profile.full_name || "",
+        profile_picture: profile.profile_picture || "",
+        bio: profile.bio || "",
+        location: profile.location || "",
+        favorite_genre: profile.favorite_genre || "",
     }
 
     return (

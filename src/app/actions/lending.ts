@@ -1,39 +1,57 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { auth } from "@/auth"
-import connectDB from "@/lib/db"
-import Book from "@/models/Book"
-import Lending from "@/models/Lending"
+import { createClient, getUser } from "@/lib/supabase/server"
 import { createNotification } from "@/app/actions/notifications"
 
 export async function lendBook(bookId: string, formData: { borrowerName: string, borrowerEmail?: string, dueDate?: Date, notes?: string }) {
     try {
-        const session = await auth()
-        if (!session?.user?.id) throw new Error("Unauthorized")
+        const user = await getUser()
+        if (!user) throw new Error("Unauthorized")
 
-        await connectDB()
+        const supabase = await createClient()
 
-        const book = await Book.findOne({ _id: bookId, user_id: session.user.id })
-        if (!book) throw new Error("Book not found")
+        // Get the book
+        const { data: book, error: bookError } = await supabase
+            .from('books')
+            .select('id, title')
+            .eq('id', bookId)
+            .eq('user_id', user.id)
+            .single()
+
+        if (bookError || !book) throw new Error("Book not found")
 
         // Create lending record
-        await Lending.create({
-            book_id: bookId,
-            user_id: session.user.id,
-            borrower_name: formData.borrowerName,
-            borrower_email: formData.borrowerEmail,
-            due_date: formData.dueDate,
-            notes: formData.notes,
-            status: "active"
-        })
+        const { error: lendingError } = await supabase
+            .from('lendings')
+            .insert({
+                book_id: bookId,
+                user_id: user.id,
+                borrower_name: formData.borrowerName,
+                borrower_email: formData.borrowerEmail,
+                due_date: formData.dueDate?.toISOString(),
+                notes: formData.notes,
+                status: 'active'
+            })
+
+        if (lendingError) {
+            console.error("Supabase error:", lendingError)
+            throw new Error("Failed to create lending record")
+        }
 
         // Update book status
-        book.lending_status = "lent_out"
-        await book.save()
+        const { error: updateError } = await supabase
+            .from('books')
+            .update({ lending_status: 'lent_out' })
+            .eq('id', bookId)
+            .eq('user_id', user.id)
+
+        if (updateError) {
+            console.error("Supabase error:", updateError)
+        }
 
         await createNotification(
-            session.user.id,
+            user.id,
             "success",
             `You lent "${book.title}" to ${formData.borrowerName}`
         )
@@ -49,36 +67,49 @@ export async function lendBook(bookId: string, formData: { borrowerName: string,
 
 export async function returnBook(bookId: string) {
     try {
-        const session = await auth()
-        if (!session?.user?.id) throw new Error("Unauthorized")
+        const user = await getUser()
+        if (!user) throw new Error("Unauthorized")
 
-        await connectDB()
+        const supabase = await createClient()
 
-        const book = await Book.findOne({ _id: bookId, user_id: session.user.id })
-        if (!book) throw new Error("Book not found")
+        // Get the book
+        const { data: book, error: bookError } = await supabase
+            .from('books')
+            .select('id, title')
+            .eq('id', bookId)
+            .eq('user_id', user.id)
+            .single()
 
-        // Find active lending record
-        const lending = await Lending.findOne({
-            book_id: bookId,
-            user_id: session.user.id,
-            status: "active"
-        })
+        if (bookError || !book) throw new Error("Book not found")
 
-        if (lending) {
-            lending.status = "returned"
-            lending.return_date = new Date()
-            await lending.save()
+        // Find active lending record and update it
+        const { error: lendingError } = await supabase
+            .from('lendings')
+            .update({
+                status: 'returned',
+                return_date: new Date().toISOString()
+            })
+            .eq('book_id', bookId)
+            .eq('user_id', user.id)
+            .eq('status', 'active')
+
+        if (lendingError) {
+            console.error("Supabase error:", lendingError)
         }
 
         // Update book status
-        book.lending_status = "available" // Assuming 'available' is mapped to 'owned' or we need to check the schema
-        // Actually, looking at Book.ts earlier, it might be 'owned' vs 'lent'. Let's check Book.ts to be sure.
-        // Reverting to safe default 'owned' based on common sense, but will verify.
-        book.lending_status = "available"
-        await book.save()
+        const { error: updateError } = await supabase
+            .from('books')
+            .update({ lending_status: 'available' })
+            .eq('id', bookId)
+            .eq('user_id', user.id)
+
+        if (updateError) {
+            console.error("Supabase error:", updateError)
+        }
 
         await createNotification(
-            session.user.id,
+            user.id,
             "success",
             `"${book.title}" has been marked as returned`
         )

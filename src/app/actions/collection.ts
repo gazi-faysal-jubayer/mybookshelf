@@ -1,52 +1,60 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { auth } from "@/auth"
-import connectDB from "@/lib/db"
-import Collection from "@/models/Collection"
-import mongoose from "mongoose"
+import { createClient, getUser } from "@/lib/supabase/server"
 
 // Create a new collection
 export async function createCollection(formData: { name: string; description?: string; is_public?: boolean }) {
     try {
-        const session = await auth()
-        if (!session?.user?.id) throw new Error("Unauthorized")
+        const user = await getUser()
+        if (!user) throw new Error("Unauthorized")
 
-        await connectDB()
+        const supabase = await createClient()
 
-        const collection = await Collection.create({
-            user_id: session.user.id,
-            name: formData.name,
-            description: formData.description,
-            is_public: formData.is_public || false,
-        })
+        const { data: collection, error } = await supabase
+            .from('collections')
+            .insert({
+                user_id: user.id,
+                name: formData.name,
+                description: formData.description,
+                is_public: formData.is_public || false,
+            })
+            .select('id')
+            .single()
+
+        if (error) {
+            if (error.code === '23505') { // Unique violation
+                throw new Error("You already have a collection with this name")
+            }
+            console.error("Supabase error:", error)
+            throw new Error("Failed to create collection")
+        }
 
         revalidatePath("/dashboard/collections")
-        return { success: true, collectionId: collection._id.toString() }
+        return { success: true, collectionId: collection.id }
     } catch (error: any) {
-        if (error.code === 11000) {
-            throw new Error("You already have a collection with this name")
-        }
         console.error("Failed to create collection:", error)
-        throw new Error("Failed to create collection")
+        throw error
     }
 }
 
 // Delete a collection
 export async function deleteCollection(collectionId: string) {
     try {
-        const session = await auth()
-        if (!session?.user?.id) throw new Error("Unauthorized")
+        const user = await getUser()
+        if (!user) throw new Error("Unauthorized")
 
-        await connectDB()
+        const supabase = await createClient()
 
-        const result = await Collection.deleteOne({
-            _id: collectionId,
-            user_id: session.user.id,
-        })
+        const { error } = await supabase
+            .from('collections')
+            .delete()
+            .eq('id', collectionId)
+            .eq('user_id', user.id)
 
-        if (result.deletedCount === 0) {
-            throw new Error("Collection not found or unauthorized")
+        if (error) {
+            console.error("Supabase error:", error)
+            throw new Error("Failed to delete collection")
         }
 
         revalidatePath("/dashboard/collections")
@@ -60,28 +68,47 @@ export async function deleteCollection(collectionId: string) {
 // Add a book to a collection
 export async function addBookToCollection(collectionId: string, bookId: string) {
     try {
-        const session = await auth()
-        if (!session?.user?.id) throw new Error("Unauthorized")
+        const user = await getUser()
+        if (!user) throw new Error("Unauthorized")
 
-        await connectDB()
+        const supabase = await createClient()
 
-        const collection = await Collection.findOne({
-            _id: collectionId,
-            user_id: session.user.id,
-        })
+        // Verify the collection belongs to the user
+        const { data: collection, error: collectionError } = await supabase
+            .from('collections')
+            .select('id')
+            .eq('id', collectionId)
+            .eq('user_id', user.id)
+            .single()
 
-        if (!collection) {
+        if (collectionError || !collection) {
             throw new Error("Collection not found")
         }
 
         // Check if book is already in collection
-        const isBookInCollection = collection.books.some((id: mongoose.Types.ObjectId) => id.toString() === bookId)
-        if (isBookInCollection) {
+        const { data: existing } = await supabase
+            .from('collection_books')
+            .select('id')
+            .eq('collection_id', collectionId)
+            .eq('book_id', bookId)
+            .single()
+
+        if (existing) {
             return { success: true, message: "Book already in collection" }
         }
 
-        collection.books.push(bookId as any)
-        await collection.save()
+        // Add book to collection
+        const { error } = await supabase
+            .from('collection_books')
+            .insert({
+                collection_id: collectionId,
+                book_id: bookId,
+            })
+
+        if (error) {
+            console.error("Supabase error:", error)
+            throw new Error("Failed to add book to collection")
+        }
 
         revalidatePath(`/dashboard/collections/${collectionId}`)
         return { success: true }
@@ -94,22 +121,33 @@ export async function addBookToCollection(collectionId: string, bookId: string) 
 // Remove a book from a collection
 export async function removeBookFromCollection(collectionId: string, bookId: string) {
     try {
-        const session = await auth()
-        if (!session?.user?.id) throw new Error("Unauthorized")
+        const user = await getUser()
+        if (!user) throw new Error("Unauthorized")
 
-        await connectDB()
+        const supabase = await createClient()
 
-        const collection = await Collection.findOne({
-            _id: collectionId,
-            user_id: session.user.id,
-        })
+        // Verify the collection belongs to the user
+        const { data: collection, error: collectionError } = await supabase
+            .from('collections')
+            .select('id')
+            .eq('id', collectionId)
+            .eq('user_id', user.id)
+            .single()
 
-        if (!collection) {
+        if (collectionError || !collection) {
             throw new Error("Collection not found")
         }
 
-        collection.books = collection.books.filter((id: mongoose.Types.ObjectId) => id.toString() !== bookId)
-        await collection.save()
+        const { error } = await supabase
+            .from('collection_books')
+            .delete()
+            .eq('collection_id', collectionId)
+            .eq('book_id', bookId)
+
+        if (error) {
+            console.error("Supabase error:", error)
+            throw new Error("Failed to remove book from collection")
+        }
 
         revalidatePath(`/dashboard/collections/${collectionId}`)
         return { success: true }
@@ -122,17 +160,34 @@ export async function removeBookFromCollection(collectionId: string, bookId: str
 // Get user's collections (helper for client components if needed, though they usually use server components)
 export async function getUserCollections() {
     try {
-        const session = await auth()
-        if (!session?.user?.id) return []
+        const user = await getUser()
+        if (!user) return []
 
-        await connectDB()
+        const supabase = await createClient()
 
-        const collections = await Collection.find({ user_id: session.user.id })
-            .select("name _id books")
-            .sort({ name: 1 })
-            .lean()
+        const { data: collections, error } = await supabase
+            .from('collections')
+            .select(`
+                id,
+                name,
+                collection_books (
+                    book_id
+                )
+            `)
+            .eq('user_id', user.id)
+            .order('name', { ascending: true })
 
-        return JSON.parse(JSON.stringify(collections))
+        if (error) {
+            console.error("Supabase error:", error)
+            return []
+        }
+
+        // Transform to match old format
+        return collections.map(c => ({
+            _id: c.id,
+            name: c.name,
+            books: c.collection_books?.map((cb: any) => cb.book_id) || []
+        }))
     } catch (error) {
         console.error("Failed to fetch collections:", error)
         return []

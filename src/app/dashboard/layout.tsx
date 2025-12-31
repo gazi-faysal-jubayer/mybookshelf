@@ -12,16 +12,29 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { auth, signOut } from "@/auth"
+import { createClient } from "@/lib/supabase/server"
+import { redirect } from "next/navigation"
 import { GlobalSearch } from "@/components/search/global-search"
 import { NotificationBell } from "@/components/notifications/notification-bell"
+
+async function signOut() {
+    "use server"
+    const supabase = await createClient()
+    await supabase.auth.signOut()
+    redirect("/login")
+}
 
 export default async function DashboardLayout({
     children,
 }: {
     children: React.ReactNode
 }) {
-    const session = await auth();
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+        redirect("/login")
+    }
 
     return (
         <div className="flex min-h-screen w-full flex-col">

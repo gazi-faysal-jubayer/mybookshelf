@@ -1,68 +1,82 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Source+Sans+3:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Warm & Cozy Theme - Cream, Brown, Terracotta */
+    --background: 40 33% 97%; /* Warm cream #FAF8F5 */
+    --foreground: 24 10% 20%; /* Dark brown text */
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 40 30% 98%;
+    --card-foreground: 24 10% 20%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 40 30% 98%;
+    --popover-foreground: 24 10% 20%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 16 50% 45%; /* Terracotta #B85C38 */
+    --primary-foreground: 40 33% 97%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 35 30% 90%; /* Light tan */
+    --secondary-foreground: 24 10% 20%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 35 20% 93%;
+    --muted-foreground: 24 10% 45%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 28 60% 55%; /* Warm amber */
+    --accent-foreground: 40 33% 97%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 40 33% 97%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 30 20% 87%;
+    --input: 30 20% 87%;
+    --ring: 16 50% 45%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
+
+    /* Custom theme colors */
+    --warm-cream: 40 33% 97%;
+    --warm-beige: 35 30% 90%;
+    --warm-tan: 30 25% 80%;
+    --coffee-brown: 24 40% 30%;
+    --terracotta: 16 50% 45%;
+    --terracotta-dark: 16 55% 38%;
+    --amber: 28 60% 55%;
+    --sage: 90 15% 50%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    /* Dark mode - Cozy Evening */
+    --background: 24 20% 10%; /* Deep warm brown */
+    --foreground: 40 25% 90%;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 24 18% 14%;
+    --card-foreground: 40 25% 90%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 24 18% 14%;
+    --popover-foreground: 40 25% 90%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 16 55% 55%; /* Lighter terracotta for dark mode */
+    --primary-foreground: 24 20% 10%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 24 15% 20%;
+    --secondary-foreground: 40 25% 90%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 24 15% 18%;
+    --muted-foreground: 40 15% 60%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 28 55% 50%;
+    --accent-foreground: 24 20% 10%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 40%;
+    --destructive-foreground: 40 25% 90%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --border: 24 15% 22%;
+    --input: 24 15% 22%;
+    --ring: 16 55% 55%;
   }
 }
 
@@ -72,5 +86,132 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: 'Source Sans 3', system-ui, sans-serif;
   }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Playfair Display', Georgia, serif;
+  }
+}
+
+@layer components {
+  /* Warm paper texture effect */
+  .paper-texture {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    background-blend-mode: soft-light;
+    opacity: 0.03;
+  }
+
+  /* Cozy card style */
+  .cozy-card {
+    @apply bg-card rounded-xl shadow-lg border border-border/50;
+    box-shadow: 0 4px 20px -4px rgba(139, 90, 43, 0.1),
+                0 8px 40px -8px rgba(139, 90, 43, 0.05);
+  }
+
+  /* Warm gradient backgrounds */
+  .warm-gradient {
+    background: linear-gradient(135deg, 
+      hsl(var(--warm-cream)) 0%, 
+      hsl(var(--warm-beige)) 50%,
+      hsl(var(--warm-tan)) 100%
+    );
+  }
+
+  .terracotta-gradient {
+    background: linear-gradient(135deg, 
+      hsl(var(--terracotta)) 0%, 
+      hsl(var(--terracotta-dark)) 100%
+    );
+  }
+
+  /* Hero pattern */
+  .hero-pattern {
+    background-color: hsl(var(--warm-cream));
+    background-image: 
+      radial-gradient(at 20% 30%, hsla(28, 60%, 55%, 0.1) 0px, transparent 50%),
+      radial-gradient(at 80% 70%, hsla(16, 50%, 45%, 0.08) 0px, transparent 50%),
+      radial-gradient(at 50% 50%, hsla(35, 30%, 90%, 0.5) 0px, transparent 70%);
+  }
+
+  /* Animated underline for links */
+  .link-underline {
+    @apply relative;
+  }
+  .link-underline::after {
+    content: '';
+    @apply absolute bottom-0 left-0 w-0 h-0.5 bg-primary transition-all duration-300;
+  }
+  .link-underline:hover::after {
+    @apply w-full;
+  }
+
+  /* Button hover effects */
+  .btn-warm {
+    @apply bg-primary text-primary-foreground px-6 py-3 rounded-lg font-medium;
+    @apply transition-all duration-300 ease-out;
+    @apply hover:shadow-lg hover:shadow-primary/25 hover:-translate-y-0.5;
+  }
+
+  .btn-warm-outline {
+    @apply border-2 border-primary text-primary px-6 py-3 rounded-lg font-medium;
+    @apply transition-all duration-300 ease-out;
+    @apply hover:bg-primary hover:text-primary-foreground;
+  }
+
+  /* Floating animation */
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+  }
+  .animate-float {
+    animation: float 4s ease-in-out infinite;
+  }
+
+  /* Fade in animation */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .animate-fade-in {
+    animation: fadeIn 0.6s ease-out forwards;
+  }
+
+  /* Stagger animations */
+  .stagger-1 { animation-delay: 0.1s; }
+  .stagger-2 { animation-delay: 0.2s; }
+  .stagger-3 { animation-delay: 0.3s; }
+  .stagger-4 { animation-delay: 0.4s; }
+
+  /* Book card hover effect */
+  .book-card-hover {
+    @apply transition-all duration-300;
+  }
+  .book-card-hover:hover {
+    @apply -translate-y-2 shadow-xl;
+    box-shadow: 0 20px 40px -12px rgba(139, 90, 43, 0.25);
+  }
+
+  /* Decorative elements */
+  .decorative-dots {
+    background-image: radial-gradient(hsl(var(--terracotta) / 0.2) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+}
+
+/* Custom scrollbar for the warm theme */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--warm-beige));
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--terracotta) / 0.4);
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--terracotta) / 0.6);
 }

@@ -20,6 +20,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { createClient } from "@/lib/supabase/client"
 
 const registerSchema = z.object({
     name: z.string().min(2, {
@@ -36,6 +37,7 @@ const registerSchema = z.object({
 export default function RegisterPage() {
     const router = useRouter()
     const [isLoading, setIsLoading] = useState(false)
+    const supabase = createClient()
 
     const form = useForm<z.infer<typeof registerSchema>>({
         resolver: zodResolver(registerSchema),
@@ -50,21 +52,22 @@ export default function RegisterPage() {
         setIsLoading(true)
 
         try {
-            const response = await fetch("/api/auth/register", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify(values),
+            const { error } = await supabase.auth.signUp({
+                email: values.email,
+                password: values.password,
+                options: {
+                    data: {
+                        full_name: values.name,
+                        username: values.email.split("@")[0] + Math.floor(Math.random() * 1000),
+                    }
+                }
             })
 
-            const data = await response.json()
-
-            if (!response.ok) {
-                throw new Error(data.message || "Something went wrong")
+            if (error) {
+                throw new Error(error.message)
             }
 
-            toast.success("Account created successfully")
+            toast.success("Account created successfully! Please check your email to verify your account.")
             router.push("/login")
         } catch (error: any) {
             toast.error(error.message)
@@ -74,11 +77,16 @@ export default function RegisterPage() {
     }
 
     return (
-        <Card className="w-full">
-            <CardHeader className="space-y-1">
-                <CardTitle className="text-2xl">Create an account</CardTitle>
+        <Card className="w-full cozy-card">
+            <CardHeader className="space-y-1 text-center">
+                <div className="mx-auto w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-2">
+                    <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                    </svg>
+                </div>
+                <CardTitle className="text-2xl">Create Your Account</CardTitle>
                 <CardDescription>
-                    Enter your details below to create your account
+                    Join thousands of book lovers today
                 </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4">

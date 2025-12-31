@@ -1,8 +1,5 @@
 import { NextResponse } from "next/server"
-import bcrypt from "bcryptjs"
-import User from "@/models/User"
-import connectDB from "@/lib/db"
-import { createNotification } from "@/app/actions/notifications"
+import { createClient } from "@/lib/supabase/server"
 
 export async function POST(req: Request) {
     try {
@@ -15,38 +12,40 @@ export async function POST(req: Request) {
             )
         }
 
-        await connectDB()
+        const supabase = await createClient()
 
-        const existingUser = await User.findOne({ email })
+        // Sign up with Supabase Auth
+        const { data, error } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+                data: {
+                    full_name: name,
+                    username: email.split("@")[0] + Math.floor(Math.random() * 1000),
+                }
+            }
+        })
 
-        if (existingUser) {
+        if (error) {
+            if (error.message.includes("already registered")) {
+                return NextResponse.json(
+                    { message: "User already exists" },
+                    { status: 409 }
+                )
+            }
             return NextResponse.json(
-                { message: "User already exists" },
-                { status: 409 }
+                { message: error.message },
+                { status: 400 }
             )
         }
 
-        const hashedPassword = await bcrypt.hash(password, 10)
-
-        const username = email.split("@")[0] + Math.floor(Math.random() * 1000)
-
-        await User.create({
-            full_name: name,
-            username,
-            email,
-            password: hashedPassword,
-        })
-
-        // Create welcome notification
-        // We need the user _id, but User.create returns the document if awaited?
-        // Actually User.create returns the document(s).
-        const newUser = await User.findOne({ email })
-        if (newUser) {
-            await createNotification(
-                newUser._id.toString(),
-                "info",
-                "Welcome to My Bookshelf! Start tracking your reading journey."
-            )
+        // Create welcome notification if user was created
+        if (data.user) {
+            await supabase.from('notifications').insert({
+                user_id: data.user.id,
+                type: 'info',
+                message: 'Welcome to My Bookshelf! Start tracking your reading journey.'
+            })
         }
 
         return NextResponse.json(

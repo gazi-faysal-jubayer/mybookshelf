@@ -1,23 +1,22 @@
-import { auth } from "@/auth"
-import connectDB from "@/lib/db"
-import Book from "@/models/Book"
+import { createClient, getUser } from "@/lib/supabase/server"
 import { BookCard } from "@/components/books/book-card"
 import { SearchX } from "lucide-react"
 
 export default async function WishlistPage() {
-    const session = await auth()
-    if (!session?.user?.id) return null
+    const user = await getUser()
+    if (!user) return null
 
-    await connectDB()
+    const supabase = await createClient()
 
     // Fetch wishlist books
-    const books = await Book.find({
-        user_id: session.user.id,
-        ownership_status: "wishlist"
-    }).sort({ createdAt: -1 }).lean()
+    const { data: books } = await supabase
+        .from('books')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('ownership_status', 'wishlist')
+        .order('created_at', { ascending: false })
 
-    // Parse to avoid serialization issues with ObjectIds if any
-    const wishlistBooks = JSON.parse(JSON.stringify(books))
+    const wishlistBooks = books || []
 
     return (
         <div className="flex flex-col gap-6">
@@ -34,7 +33,7 @@ export default async function WishlistPage() {
             ) : (
                 <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {wishlistBooks.map((book: any) => (
-                        <BookCard key={book._id} book={book} />
+                        <BookCard key={book.id} book={{ ...book, _id: book.id }} />
                     ))}
                 </div>
             )}

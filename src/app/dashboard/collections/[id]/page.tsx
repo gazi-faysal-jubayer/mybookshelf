@@ -19,9 +19,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import connectDB from "@/lib/db"
-import Collection from "@/models/Collection"
-import { auth } from "@/auth"
+import { createClient, getUser } from "@/lib/supabase/server"
 import { RemoveBookButton } from "@/components/collections/remove-book-button"
 import { DeleteCollectionAction } from "@/components/collections/delete-collection-action"
 
@@ -33,16 +31,31 @@ interface CollectionDetailPageProps {
 
 export default async function CollectionDetailPage({ params }: CollectionDetailPageProps) {
     const { id } = params
-    await connectDB()
-    const session = await auth()
+    const user = await getUser()
+    if (!user) return notFound()
 
-    if (!session?.user?.id) return notFound()
+    const supabase = await createClient()
 
-    const collection = await Collection.findOne({ _id: id, user_id: session.user.id })
-        .populate("books")
-        .lean()
+    // Fetch collection
+    const { data: collection, error: collectionError } = await supabase
+        .from('collections')
+        .select('*')
+        .eq('id', id)
+        .eq('user_id', user.id)
+        .single()
 
-    if (!collection) return notFound()
+    if (collectionError || !collection) return notFound()
+
+    // Fetch books in this collection
+    const { data: collectionBooks } = await supabase
+        .from('collection_books')
+        .select(`
+            book_id,
+            books (*)
+        `)
+        .eq('collection_id', id)
+
+    const books = collectionBooks?.map((cb: any) => cb.books).filter(Boolean) || []
 
     return (
         <div className="flex flex-col gap-6">
@@ -71,7 +84,7 @@ export default async function CollectionDetailPage({ params }: CollectionDetailP
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                        <DeleteCollectionAction collectionId={collection._id.toString()} />
+                        <DeleteCollectionAction collectionId={collection.id} />
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
@@ -79,10 +92,10 @@ export default async function CollectionDetailPage({ params }: CollectionDetailP
             <Separator />
 
             <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold">Books ({collection.books.length})</h2>
+                <h2 className="text-xl font-semibold">Books ({books.length})</h2>
             </div>
 
-            {collection.books.length === 0 ? (
+            {books.length === 0 ? (
                 <div className="flex flex-col items-center justify-center min-h-[200px] gap-4 rounded-lg border border-dashed p-8 text-center text-muted-foreground">
                     <p>This collection is empty.</p>
                     <Button variant="link" asChild>
@@ -91,15 +104,15 @@ export default async function CollectionDetailPage({ params }: CollectionDetailP
                 </div>
             ) : (
                 <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {collection.books.map((book: any) => (
-                        <Card key={book._id.toString()} className="flex flex-col h-full group relative">
+                    {books.map((book: any) => (
+                        <Card key={book.id} className="flex flex-col h-full group relative">
                             <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                                <RemoveBookButton collectionId={collection._id.toString()} bookId={book._id.toString()} />
+                                <RemoveBookButton collectionId={collection.id} bookId={book.id} />
                             </div>
                             <CardHeader>
                                 <div className="grid gap-1">
                                     <CardTitle className="line-clamp-1">
-                                        <Link href={`/dashboard/books/${book._id}`} className="hover:underline">
+                                        <Link href={`/dashboard/books/${book.id}`} className="hover:underline">
                                             {book.title}
                                         </Link>
                                     </CardTitle>
@@ -112,10 +125,10 @@ export default async function CollectionDetailPage({ params }: CollectionDetailP
                                         <BookIcon className="mr-1 h-3 w-3" />
                                         {book.format}
                                     </div>
-                                    {book.purchase_info?.date && (
+                                    {book.purchase_date && (
                                         <div className="flex items-center">
                                             <Calendar className="mr-1 h-3 w-3" />
-                                            {format(new Date(book.purchase_info.date), "MMM yyyy")}
+                                            {format(new Date(book.purchase_date), "MMM yyyy")}
                                         </div>
                                     )}
                                 </div>

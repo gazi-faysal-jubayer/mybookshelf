@@ -1,24 +1,32 @@
 "use server"
 
-import { auth } from "@/auth"
-import connectDB from "@/lib/db"
-import Notification from "@/models/Notification"
+import { createClient, getUser } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 
 export async function getNotifications() {
     try {
-        const session = await auth()
-        if (!session?.user?.id) return []
+        const user = await getUser()
+        if (!user) return []
 
-        await connectDB()
+        const supabase = await createClient()
 
-        const notifications = await Notification.find({ user_id: session.user.id })
-            .sort({ createdAt: -1 })
+        const { data: notifications, error } = await supabase
+            .from('notifications')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false })
             .limit(20)
-        // .lean() // Returns plain Objects, but we need to serialize properly for client
 
-        // Serialize ObjectIds and Dates
-        return JSON.parse(JSON.stringify(notifications))
+        if (error) {
+            console.error("Supabase error:", error)
+            return []
+        }
+
+        // Transform to match old format with _id
+        return notifications.map(n => ({
+            ...n,
+            _id: n.id
+        }))
     } catch (error) {
         console.error("Failed to fetch notifications:", error)
         return []
@@ -27,15 +35,20 @@ export async function getNotifications() {
 
 export async function markAsRead(id: string) {
     try {
-        const session = await auth()
-        if (!session?.user?.id) return
+        const user = await getUser()
+        if (!user) return
 
-        await connectDB()
+        const supabase = await createClient()
 
-        await Notification.findOneAndUpdate(
-            { _id: id, user_id: session.user.id },
-            { is_read: true }
-        )
+        const { error } = await supabase
+            .from('notifications')
+            .update({ is_read: true })
+            .eq('id', id)
+            .eq('user_id', user.id)
+
+        if (error) {
+            console.error("Supabase error:", error)
+        }
 
         revalidatePath("/dashboard")
     } catch (error) {
@@ -45,15 +58,20 @@ export async function markAsRead(id: string) {
 
 export async function markAllAsRead() {
     try {
-        const session = await auth()
-        if (!session?.user?.id) return
+        const user = await getUser()
+        if (!user) return
 
-        await connectDB()
+        const supabase = await createClient()
 
-        await Notification.updateMany(
-            { user_id: session.user.id, is_read: false },
-            { is_read: true }
-        )
+        const { error } = await supabase
+            .from('notifications')
+            .update({ is_read: true })
+            .eq('user_id', user.id)
+            .eq('is_read', false)
+
+        if (error) {
+            console.error("Supabase error:", error)
+        }
 
         revalidatePath("/dashboard")
     } catch (error) {
@@ -64,13 +82,20 @@ export async function markAllAsRead() {
 // Internal helper to create notification from other server actions
 export async function createNotification(userId: string, type: string, message: string, link?: string) {
     try {
-        await connectDB()
-        await Notification.create({
-            user_id: userId,
-            type,
-            message,
-            link
-        })
+        const supabase = await createClient()
+        
+        const { error } = await supabase
+            .from('notifications')
+            .insert({
+                user_id: userId,
+                type: type as any,
+                message,
+                link
+            })
+
+        if (error) {
+            console.error("Supabase error:", error)
+        }
     } catch (error) {
         console.error("Failed to create notification:", error)
     }

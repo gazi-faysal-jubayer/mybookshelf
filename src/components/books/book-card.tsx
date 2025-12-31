@@ -41,7 +41,7 @@ export function BookCard({ book }: BookCardProps) {
     const handleDelete = () => {
         startTransition(async () => {
             try {
-                await deleteBook(book._id)
+                await deleteBook(book.id)
                 toast.success("Book deleted")
             } catch (error) {
                 toast.error("Failed to delete book")
@@ -52,7 +52,7 @@ export function BookCard({ book }: BookCardProps) {
     const handleReturn = () => {
         startTransition(async () => {
             try {
-                await returnBook(book._id)
+                await returnBook(book.id)
                 toast.success("Book returned")
             } catch (error) {
                 toast.error("Failed to return book")
@@ -79,12 +79,12 @@ export function BookCard({ book }: BookCardProps) {
                             <DropdownMenuContent align="end">
                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                 <DropdownMenuItem asChild>
-                                    <Link href={`/dashboard/books/${book._id}`}>View Details</Link>
+                                    <Link href={`/dashboard/books/${book.id}`}>View Details</Link>
                                 </DropdownMenuItem>
                                 <DropdownMenuItem asChild>
-                                    <Link href={`/dashboard/books/${book._id}/edit`}>Edit</Link>
+                                    <Link href={`/dashboard/books/${book.id}/edit`}>Edit</Link>
                                 </DropdownMenuItem>
-                                <AddToCollectionMenuItem bookId={book._id} />
+                                <AddToCollectionMenuItem bookId={book.id} />
                                 {book.lending_status === "available" && book.ownership_status === "owned" && (
                                     <>
                                         <DropdownMenuSeparator />
@@ -155,7 +155,7 @@ export function BookCard({ book }: BookCardProps) {
             </Card>
 
             <LendBookModal
-                bookId={book._id}
+                bookId={book.id}
                 isOpen={isLendModalOpen}
                 onClose={() => setIsLendModalOpen(false)}
             />

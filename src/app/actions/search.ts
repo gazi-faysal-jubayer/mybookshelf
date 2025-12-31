@@ -1,8 +1,6 @@
 "use server"
 
-import { auth } from "@/auth"
-import connectDB from "@/lib/db"
-import Book from "@/models/Book"
+import { createClient, getUser } from "@/lib/supabase/server"
 
 export interface SearchFilters {
     query?: string
@@ -14,49 +12,61 @@ export interface SearchFilters {
 
 export async function searchBooks(filters: SearchFilters) {
     try {
-        const session = await auth()
-        if (!session?.user?.id) return []
+        const user = await getUser()
+        if (!user) return []
 
-        await connectDB()
+        const supabase = await createClient()
 
-        const query: any = { user_id: session.user.id }
+        let query = supabase
+            .from('books')
+            .select('*')
+            .eq('user_id', user.id)
 
+        // Search by title or author
         if (filters.query) {
-            // Case-insensitive search on title or author
-            query.$or = [
-                { title: { $regex: filters.query, $options: "i" } },
-                { author: { $regex: filters.query, $options: "i" } },
-            ]
+            query = query.or(`title.ilike.%${filters.query}%,author.ilike.%${filters.query}%`)
         }
 
+        // Filter by genre
         if (filters.genre && filters.genre !== "all") {
-            query.genre = filters.genre
+            query = query.contains('genre', [filters.genre])
         }
 
+        // Filter by reading status
         if (filters.status && filters.status !== "all") {
-            query.reading_status = filters.status
+            query = query.eq('reading_status', filters.status)
         }
 
+        // Filter by minimum rating
         if (filters.minRating && filters.minRating > 0) {
-            query.rating = { $gte: filters.minRating }
+            query = query.gte('rating', filters.minRating)
         }
 
-        let sortOption: any = { createdAt: -1 } // Default sort
+        // Sorting
+        let sortColumn = 'created_at'
+        let ascending = false
 
-        if (filters.sort === "title_asc") sortOption = { title: 1 }
-        if (filters.sort === "title_desc") sortOption = { title: -1 }
-        if (filters.sort === "rating_desc") sortOption = { rating: -1 }
-        if (filters.sort === "rating_asc") sortOption = { rating: 1 }
-        if (filters.sort === "newest") sortOption = { createdAt: -1 }
-        if (filters.sort === "oldest") sortOption = { createdAt: 1 }
+        if (filters.sort === "title_asc") { sortColumn = 'title'; ascending = true }
+        if (filters.sort === "title_desc") { sortColumn = 'title'; ascending = false }
+        if (filters.sort === "rating_desc") { sortColumn = 'rating'; ascending = false }
+        if (filters.sort === "rating_asc") { sortColumn = 'rating'; ascending = true }
+        if (filters.sort === "newest") { sortColumn = 'created_at'; ascending = false }
+        if (filters.sort === "oldest") { sortColumn = 'created_at'; ascending = true }
 
-        const books = await Book.find(query)
-            .sort(sortOption)
-            .lean()
+        query = query.order(sortColumn, { ascending })
 
-        // Convert _id and dates to plain strings/numbers if needed for client, 
-        // though .lean() returns POJO, ObjectIds usually need toString() for key props in React lists if strict.
-        return JSON.parse(JSON.stringify(books))
+        const { data: books, error } = await query
+
+        if (error) {
+            console.error("Supabase error:", error)
+            throw new Error("Failed to search books")
+        }
+
+        // Transform to match old format with _id
+        return books.map(book => ({
+            ...book,
+            _id: book.id
+        }))
 
     } catch (error) {
         console.error("Search failed:", error)
@@ -66,12 +76,30 @@ export async function searchBooks(filters: SearchFilters) {
 
 export async function getUniqueGenres() {
     try {
-        const session = await auth()
-        if (!session?.user?.id) return []
-        await connectDB()
+        const user = await getUser()
+        if (!user) return []
 
-        const genres = await Book.distinct("genre", { user_id: session.user.id })
-        return genres.sort()
+        const supabase = await createClient()
+
+        const { data: books, error } = await supabase
+            .from('books')
+            .select('genre')
+            .eq('user_id', user.id)
+
+        if (error) {
+            console.error("Supabase error:", error)
+            return []
+        }
+
+        // Extract unique genres from all books
+        const allGenres = new Set<string>()
+        books?.forEach(book => {
+            if (book.genre && Array.isArray(book.genre)) {
+                book.genre.forEach((g: string) => allGenres.add(g))
+            }
+        })
+
+        return Array.from(allGenres).sort()
     } catch (error) {
         console.error("Failed to fetch genres:", error)
         return []
