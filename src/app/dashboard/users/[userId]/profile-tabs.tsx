@@ -34,7 +34,7 @@ export function ProfileTabs({ userId, profile, isOwnProfile, currentUserId }: Pr
 
     return (
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="w-full justify-start overflow-x-auto">
+            <TabsList className="w-full justify-start overflow-x-auto scrollbar-hide">
                 <TabsTrigger value="posts" className="gap-2">
                     <MessageSquare className="h-4 w-4" />
                     <span className="hidden sm:inline">Posts</span>

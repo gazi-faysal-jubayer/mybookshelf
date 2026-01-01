@@ -248,7 +248,7 @@ export function ProfileHeader({
                 </div>
 
                 {/* Stats */}
-                <div className="flex flex-wrap gap-6 mt-6">
+                <div className="flex flex-wrap gap-4 sm:gap-6 mt-6">
                     <StatItem 
                         icon={<BookOpen className="h-4 w-4" />}
                         value={profile.total_books_read || 0}

@@ -181,7 +181,7 @@ export function ChatArea({
 
                                 <div
                                     className={cn(
-                                        "max-w-[70%] rounded-lg px-3 py-2",
+                                        "max-w-[85%] sm:max-w-[70%] rounded-lg px-3 py-2",
                                         isOwn
                                             ? "bg-primary text-primary-foreground"
                                             : "bg-muted"

@@ -17,7 +17,7 @@ export default async function ChatPage({ params }: ChatPageProps) {
     const { conversationId } = await params
 
     return (
-        <div className="h-[calc(100vh-12rem)]">
+        <div className="h-[calc(100vh-8rem)] md:h-[calc(100vh-10rem)]">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-full">
                 {/* Conversation List - hidden on mobile when viewing chat */}
                 <div className="hidden md:block md:col-span-1 border rounded-lg overflow-hidden">

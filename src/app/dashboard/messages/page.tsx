@@ -12,7 +12,7 @@ export default async function MessagesPage() {
     if (!user) redirect("/login")
 
     return (
-        <div className="h-[calc(100vh-12rem)]">
+        <div className="h-[calc(100vh-8rem)] md:h-[calc(100vh-10rem)]">
             <div className="flex items-center justify-between mb-6">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">Messages</h1>

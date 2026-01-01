@@ -23,7 +23,7 @@ export function GlobalSearch() {
                 <Input
                     type="search"
                     placeholder="Search books..."
-                    className="pl-8 sm:w-[300px] md:w-[200px] lg:w-[300px]"
+                    className="pl-8 w-full sm:w-[200px] md:w-[250px] lg:w-[300px]"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                 />

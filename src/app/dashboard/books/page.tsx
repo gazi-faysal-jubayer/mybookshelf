@@ -53,7 +53,7 @@ export default async function BooksPage() {
 
             {/* Tabs for different views */}
             <Tabs defaultValue="all" className="w-full">
-                <div className="flex items-center justify-between mb-4 overflow-x-auto">
+                <div className="flex items-center justify-between mb-4 overflow-x-auto scrollbar-hide pb-1">
                     <TabsList className="inline-flex h-auto min-w-max">
                         <TabsTrigger value="all" className="text-xs sm:text-sm">All ({booksList.length})</TabsTrigger>
                         <TabsTrigger value="owned" className="text-xs sm:text-sm">Owned ({ownedBooks.length})</TabsTrigger>

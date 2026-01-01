@@ -68,7 +68,7 @@ export function BookFiltersBar({ filters, onFiltersChange, genres }: BookFilters
             <div className="hidden md:flex items-center gap-2 flex-wrap">
                 {/* Sort */}
                 <Select value={filters.sortBy} onValueChange={(v) => updateFilter("sortBy", v)}>
-                    <SelectTrigger className="w-[140px] h-8 text-xs">
+                    <SelectTrigger className="w-[130px] h-8 text-xs">
                         <SelectValue placeholder="Sort by" />
                     </SelectTrigger>
                     <SelectContent>

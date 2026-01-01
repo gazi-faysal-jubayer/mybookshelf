@@ -41,7 +41,7 @@ export default async function DashboardLayout({
             <header className="sticky top-0 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6 z-10">
                 <DesktopNav />
                 <MobileNav />
-                <div className="flex w-full items-center gap-4 md:ml-auto md:gap-2 lg:gap-4">
+                <div className="flex w-full items-center gap-2 sm:gap-4 md:ml-auto">
                     <GlobalSearch />
                     <NotificationBell />
                     <ThemeToggle />
@@ -52,7 +52,7 @@ export default async function DashboardLayout({
                                 <span className="sr-only">Toggle user menu</span>
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
+                        <DropdownMenuContent align="end" className="w-48">
                             <DropdownMenuLabel>My Account</DropdownMenuLabel>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem asChild>
