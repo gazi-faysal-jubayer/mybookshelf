@@ -107,6 +107,7 @@ export async function createNotification(
         relatedPostId?: string
         relatedFriendshipId?: string
         relatedBookRequestId?: string
+        relatedCommentId?: string
         category?: string
     }
 ) {
@@ -124,6 +125,7 @@ export async function createNotification(
                 related_post_id: options?.relatedPostId,
                 related_friendship_id: options?.relatedFriendshipId,
                 related_book_request_id: options?.relatedBookRequestId,
+                related_comment_id: options?.relatedCommentId,
                 notification_category: options?.category || 'general'
             })
 

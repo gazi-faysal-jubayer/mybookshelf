@@ -3,6 +3,7 @@
 import { createClient, getUser } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 import { createNotification } from "./notifications"
+import { processMentions } from "./social"
 
 export async function createPost(data: {
     content: string
@@ -33,6 +34,9 @@ export async function createPost(data: {
             console.error("Supabase error:", error)
             throw new Error("Failed to create post")
         }
+
+        // Process mentions
+        await processMentions(data.content, post.id, 'post', user.id)
 
         revalidatePath("/dashboard/feed")
         return { success: true, postId: post.id }
@@ -153,7 +157,7 @@ export async function unlikePost(postId: string) {
     }
 }
 
-export async function addComment(postId: string, content: string) {
+export async function addComment(postId: string, content: string, parentId?: string) {
     try {
         const user = await getUser()
         if (!user) throw new Error("Unauthorized")
@@ -176,6 +180,7 @@ export async function addComment(postId: string, content: string) {
                 post_id: postId,
                 user_id: user.id,
                 content: content.trim(),
+                parent_id: parentId || null
             })
             .select('id')
             .single()
@@ -185,27 +190,66 @@ export async function addComment(postId: string, content: string) {
             throw new Error("Failed to add comment")
         }
 
-        // Notify post author (but not if they commented on their own post)
-        if (post && post.user_id !== user.id) {
-            const { data: commenterProfile } = await supabase
-                .from('profiles')
-                .select('full_name, username')
-                .eq('id', user.id)
+        // Process mentions in comment
+        await processMentions(content, comment.id, 'comment', user.id)
+
+        const { data: commenterProfile } = await supabase
+            .from('profiles')
+            .select('full_name, username')
+            .eq('id', user.id)
+            .single()
+
+        const commenterName = commenterProfile?.full_name || commenterProfile?.username || 'Someone'
+
+        // 1. Notify parent comment author if this is a reply
+        if (parentId) {
+            const { data: parentComment } = await supabase
+                .from('post_comments')
+                .select('user_id')
+                .eq('id', parentId)
                 .single()
 
-            const commenterName = commenterProfile?.full_name || commenterProfile?.username || 'Someone'
+            if (parentComment && parentComment.user_id !== user.id) {
+                await createNotification(
+                    parentComment.user_id,
+                    'info',
+                    `${commenterName} replied to your comment`,
+                    `/dashboard/feed?id=${postId}`, // Link to post for now, deeper linking later
+                    {
+                        relatedUserId: user.id,
+                        relatedPostId: postId,
+                        relatedCommentId: comment.id,
+                        category: 'comment_reply'
+                    }
+                )
+            }
+        }
 
-            await createNotification(
-                post.user_id,
-                'info',
-                `${commenterName} commented on your post`,
-                `/dashboard/feed`,
-                {
-                    relatedUserId: user.id,
-                    relatedPostId: postId,
-                    category: 'post_comment'
-                }
-            )
+        // 2. Notify post author (but not if they commented on their own post, AND check if we already notified them via reply)
+        // If the post author is also the parent comment author, they already got a 'reply' notification, so maybe skip 'comment' notification?
+        // Or just send both safely. Simplicity: send both if conditions user_id != post.user_id met.
+        // Actually, if I reply to my own comment on someone else's post, post author should get notified. 
+        // If I reply to post author's comment on their post, they get reply notification. Post comment notification might be redundant but separate categories.
+        // Let's keep it simple: Notify post author if user != post_owner.
+        if (post && post.user_id !== user.id) {
+            // Check if we already notified this user as a parent comment author
+            const parentCommentAuthorId = parentId ? (await supabase.from('post_comments').select('user_id').eq('id', parentId).single()).data?.user_id : null
+
+            // Only send post_comment notification if we didn't just send them a reply notification
+            if (parentCommentAuthorId !== post.user_id) {
+                await createNotification(
+                    post.user_id,
+                    'info',
+                    `${commenterName} commented on your post`,
+                    `/dashboard/feed?id=${postId}`,
+                    {
+                        relatedUserId: user.id,
+                        relatedPostId: postId,
+                        relatedCommentId: comment.id,
+                        category: 'post_comment'
+                    }
+                )
+            }
         }
 
         return { success: true, commentId: comment.id }
@@ -236,6 +280,75 @@ export async function deleteComment(commentId: string) {
         return { success: true }
     } catch (error) {
         console.error("Failed to delete comment:", error)
+        throw error
+    }
+}
+
+export async function toggleCommentLike(commentId: string) {
+    try {
+        const user = await getUser()
+        if (!user) throw new Error("Unauthorized")
+
+        const supabase = await createClient()
+
+        // Check if already liked
+        const { data: existing } = await supabase
+            .from('post_comment_likes')
+            .select('id')
+            .eq('comment_id', commentId)
+            .eq('user_id', user.id)
+            .single()
+
+        if (existing) {
+            // Unlike
+            await supabase
+                .from('post_comment_likes')
+                .delete()
+                .eq('comment_id', commentId)
+                .eq('user_id', user.id)
+            return { success: true, liked: false }
+        } else {
+            // Like
+            await supabase
+                .from('post_comment_likes')
+                .insert({
+                    comment_id: commentId,
+                    user_id: user.id
+                })
+
+            // Notify comment author (if not self)
+            const { data: comment } = await supabase
+                .from('post_comments')
+                .select('user_id, post_id')
+                .eq('id', commentId)
+                .single()
+
+            if (comment && comment.user_id !== user.id) {
+                const { data: likerProfile } = await supabase
+                    .from('profiles')
+                    .select('full_name, username')
+                    .eq('id', user.id)
+                    .single()
+
+                const likerName = likerProfile?.full_name || likerProfile?.username || 'Someone'
+
+                await createNotification(
+                    comment.user_id,
+                    'info',
+                    `${likerName} liked your comment`,
+                    `/dashboard/feed?id=${comment.post_id}`,
+                    {
+                        relatedUserId: user.id,
+                        relatedCommentId: commentId,
+                        relatedPostId: comment.post_id,
+                        category: 'comment_like'
+                    }
+                )
+            }
+            return { success: true, liked: true }
+        }
+    } catch (error) {
+        console.error("Failed to toggle comment like:", error)
         throw error
     }
 }
@@ -384,7 +497,9 @@ export async function getPostComments(postId: string) {
                 id,
                 content,
                 created_at,
-                user_id
+                user_id,
+                parent_id,
+                likes:post_comment_likes(count)
             `)
             .eq('post_id', postId)
             .order('created_at', { ascending: true })
@@ -403,6 +518,16 @@ export async function getPostComments(postId: string) {
 
         const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]))
 
+        // Check user likes
+        const commentIds = (comments || []).map((c: any) => c.id)
+        const { data: userLikes } = await supabase
+            .from('post_comment_likes')
+            .select('comment_id')
+            .eq('user_id', user.id)
+            .in('comment_id', commentIds)
+
+        const likedCommentIds = new Set((userLikes || []).map((l: any) => l.comment_id))
+
         // Transform to include user data and current user info
         const transformed = (comments || []).map((item: any) => {
             const profile = profileMap.get(item.user_id)
@@ -413,11 +538,23 @@ export async function getPostComments(postId: string) {
                 created_at: item.created_at,
                 user: profile,
                 isOwn: item.user_id === user.id,
+                parentId: item.parent_id,
+                likesCount: item.likes?.[0]?.count || 0,
+                isLiked: likedCommentIds.has(item.id)
             }
         })
 
         // Filter out nulls with a type guard so TS knows the array contains only Comment objects
-        return transformed.filter((c): c is { id: string; content: string; created_at: string; user: any; isOwn: boolean } => Boolean(c))
+        return transformed.filter((c): c is {
+            id: string;
+            content: string;
+            created_at: string;
+            user: any;
+            isOwn: boolean;
+            parentId: string | null;
+            likesCount: number;
+            isLiked: boolean;
+        } => Boolean(c))
     } catch (error) {
         console.error("Failed to get comments:", error)
         return []
@@ -444,9 +581,9 @@ export async function getUserPosts(userId: string, cursor?: string, limit: numbe
 
         // Determine visibility filter based on relationship
         const isOwnProfile = currentUser.id === userId
-        
+
         let visibilityFilter = ['public'] // Default to public only
-        
+
         if (isOwnProfile) {
             // User can see all their own posts
             visibilityFilter = ['public', 'connections', 'private']

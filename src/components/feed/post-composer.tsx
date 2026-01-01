@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react"
 import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
+import { MentionTextarea } from "@/components/ui/mention-textarea"
 import {
     Select,
     SelectContent,
@@ -48,11 +48,11 @@ export function PostComposer({ onPostCreated }: PostComposerProps) {
     return (
         <Card>
             <CardContent className="p-4">
-                <Textarea
+                <MentionTextarea
                     placeholder="What's on your mind? Share your reading journey..."
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
-                    className="min-h-[100px] resize-none border-none focus-visible:ring-0 p-0"
+                    className="min-h-[100px] resize-none border-none focus-visible:ring-0 p-0 shadow-none focus:ring-0"
                     maxLength={1000}
                 />
                 <div className="flex items-center justify-between mt-4 pt-4 border-t">

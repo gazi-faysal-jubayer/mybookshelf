@@ -601,3 +601,50 @@ export async function searchUsersForMention(query: string) {
 
     return sorted.slice(0, 8)
 }
+
+export async function processMentions(
+    text: string,
+    relatedId: string,
+    type: 'post' | 'comment',
+    currentUserId: string
+) {
+    const mentionRegex = /@(\w+)/g
+    const matches = text.match(mentionRegex)
+    if (!matches) return
+
+    const usernames = [...new Set(matches.map(m => m.slice(1)))] // Remove @ and duplicates
+    if (usernames.length === 0) return
+
+    const supabase = await createClient()
+
+    // Find users by username
+    const { data: users } = await supabase
+        .from('profiles')
+        .select('id, username')
+        .in('username', usernames)
+
+    if (!users || users.length === 0) return
+
+    // Create notifications for each mentioned user
+    for (const user of users) {
+        if (user.id === currentUserId) continue // Don't notify self
+
+        const category = type === 'post' ? 'mention_post' : 'mention_comment'
+        const message = type === 'post'
+            ? 'mentioned you in a post'
+            : 'mentioned you in a comment'
+
+        await createNotification(
+            user.id,
+            'info',
+            message,
+            `/dashboard/feed?id=${relatedId}`, // We'll need to handle deep linking later, for now link to feed/post
+            {
+                relatedUserId: currentUserId,
+                relatedPostId: type === 'post' ? relatedId : undefined, // If comment, we might need post ID... handle in caller
+                relatedCommentId: type === 'comment' ? relatedId : undefined,
+                category
+            }
+        )
+    }
+}
