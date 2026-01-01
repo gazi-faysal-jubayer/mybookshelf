@@ -22,12 +22,13 @@ export async function searchBooks(filters: SearchFilters) {
             .select('*')
             .eq('user_id', user.id)
 
-        // Search by title or author
-        if (filters.query) {
-            query = query.or(`title.ilike.%${filters.query}%,author.ilike.%${filters.query}%`)
+        // Search by title or author (case-insensitive)
+        if (filters.query && filters.query.trim()) {
+            const searchTerm = filters.query.trim()
+            query = query.or(`title.ilike.%${searchTerm}%,author.ilike.%${searchTerm}%`)
         }
 
-        // Filter by genre
+        // Filter by genre - genre is stored as an array, use contains operator
         if (filters.genre && filters.genre !== "all") {
             query = query.contains('genre', [filters.genre])
         }
@@ -46,31 +47,52 @@ export async function searchBooks(filters: SearchFilters) {
         let sortColumn = 'created_at'
         let ascending = false
 
-        if (filters.sort === "title_asc") { sortColumn = 'title'; ascending = true }
-        if (filters.sort === "title_desc") { sortColumn = 'title'; ascending = false }
-        if (filters.sort === "rating_desc") { sortColumn = 'rating'; ascending = false }
-        if (filters.sort === "rating_asc") { sortColumn = 'rating'; ascending = true }
-        if (filters.sort === "newest") { sortColumn = 'created_at'; ascending = false }
-        if (filters.sort === "oldest") { sortColumn = 'created_at'; ascending = true }
+        switch (filters.sort) {
+            case "title_asc":
+                sortColumn = 'title'
+                ascending = true
+                break
+            case "title_desc":
+                sortColumn = 'title'
+                ascending = false
+                break
+            case "rating_desc":
+                sortColumn = 'rating'
+                ascending = false
+                break
+            case "rating_asc":
+                sortColumn = 'rating'
+                ascending = true
+                break
+            case "oldest":
+                sortColumn = 'created_at'
+                ascending = true
+                break
+            case "newest":
+            default:
+                sortColumn = 'created_at'
+                ascending = false
+                break
+        }
 
-        query = query.order(sortColumn, { ascending })
+        query = query.order(sortColumn, { ascending, nullsFirst: false })
 
         const { data: books, error } = await query
 
         if (error) {
             console.error("Supabase error:", error)
-            throw new Error("Failed to search books")
+            return []
         }
 
         // Transform to match old format with _id
-        return books.map(book => ({
+        return (books || []).map(book => ({
             ...book,
             _id: book.id
         }))
 
     } catch (error) {
         console.error("Search failed:", error)
-        throw new Error("Failed to search books")
+        return []
     }
 }
 
