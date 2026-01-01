@@ -5,21 +5,22 @@ import Link from "next/link"
 import { useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { sendFriendRequest, followUser, unfollowUser } from "@/app/actions/social"
+import { acceptFriendRequest } from "@/app/actions/connections"
 import { getOrCreateConversation } from "@/app/actions/messaging"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { 
+import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu"
-import { 
-    MapPin, 
-    Calendar, 
-    Star, 
-    BookOpen, 
-    Users, 
+import {
+    MapPin,
+    Calendar,
+    Star,
+    BookOpen,
+    Users,
     MessageSquare,
     UserPlus,
     UserCheck,
@@ -49,7 +50,11 @@ interface Profile {
     // Relations
     isFollowing?: boolean
     isFriend?: boolean
-    friendshipStatus?: string
+    friendshipStatus?: {
+        id: string
+        status: string
+        isRequester: boolean
+    } | string | null
 }
 
 interface ProfileHeaderProps {
@@ -105,6 +110,24 @@ export function ProfileHeader({
         })
     }
 
+    const handleAcceptRequest = () => {
+        startTransition(async () => {
+            try {
+                const status = profile.friendshipStatus
+                // Ensure we have a friendship ID and it's an object
+                if (!status || typeof status === 'string' || !status.id) {
+                    throw new Error("Cannot find friend request")
+                }
+
+                await acceptFriendRequest(status.id)
+                toast.success("Friend request accepted!")
+                router.refresh()
+            } catch (error: any) {
+                toast.error(error.message || "Failed to accept request")
+            }
+        })
+    }
+
     const handleMessage = () => {
         startTransition(async () => {
             try {
@@ -131,10 +154,10 @@ export function ProfileHeader({
             </div>
 
             {/* Profile Info */}
-            <div className="px-4">
-                <div className="flex flex-col md:flex-row md:items-end gap-4 -mt-16 md:-mt-12">
-                    {/* Avatar */}
-                    <div className="relative h-24 w-24 md:h-32 md:w-32 rounded-full border-4 border-background overflow-hidden bg-muted flex-shrink-0">
+            <div className="px-4 pb-4">
+                <div className="flex flex-col md:flex-row md:items-end gap-4 relative">
+                    {/* Avatar - Moved up to overlap cover photo properly */}
+                    <div className="-mt-12 md:-mt-16 relative h-24 w-24 md:h-32 md:w-32 rounded-full border-4 border-background overflow-hidden bg-muted flex-shrink-0 z-10">
                         {profile.profile_picture ? (
                             <Image
                                 src={profile.profile_picture}
@@ -143,14 +166,14 @@ export function ProfileHeader({
                                 className="object-cover"
                             />
                         ) : (
-                            <div className="w-full h-full flex items-center justify-center text-3xl font-bold">
-                                {displayName[0].toUpperCase()}
+                            <div className="w-full h-full flex items-center justify-center text-3xl font-bold bg-muted text-muted-foreground">
+                                {displayName[0]?.toUpperCase()}
                             </div>
                         )}
                     </div>
 
                     {/* Name & Actions */}
-                    <div className="flex-1 flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-2">
+                    <div className="flex-1 flex flex-col md:flex-row md:items-center md:justify-between gap-4 pt-2 md:pt-0">
                         <div>
                             <div className="flex items-center gap-2">
                                 <h1 className="text-2xl font-bold">{displayName}</h1>
@@ -164,9 +187,9 @@ export function ProfileHeader({
                         </div>
 
                         {/* Action Buttons */}
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                             {isOwnProfile ? (
-                                <Button variant="outline" asChild>
+                                <Button variant="outline" asChild size="sm">
                                     <Link href="/dashboard/settings">
                                         <Settings className="h-4 w-4 mr-2" />
                                         Edit Profile
@@ -174,10 +197,11 @@ export function ProfileHeader({
                                 </Button>
                             ) : (
                                 <>
-                                    <Button 
+                                    <Button
                                         variant={profile.isFollowing ? "secondary" : "default"}
                                         onClick={handleFollow}
                                         disabled={isPending}
+                                        size="sm"
                                     >
                                         {profile.isFollowing ? (
                                             <>
@@ -192,28 +216,47 @@ export function ProfileHeader({
                                         )}
                                     </Button>
 
-                                    <Button 
-                                        variant="outline"
+                                    {/* Friend Status Logic */}
+                                    {profile.isFriend ? (
+                                        <Button variant="outline" size="sm" disabled>
+                                            <Users className="h-4 w-4 mr-2" />
+                                            Friends
+                                        </Button>
+                                    ) : profile.friendshipStatus === "sent_request" ? (
+                                        <Button variant="outline" size="sm" disabled>
+                                            <CheckCircle className="h-4 w-4 mr-2" />
+                                            Requested
+                                        </Button>
+                                    ) : profile.friendshipStatus === "received_request" ? (
+                                        <Button variant="default" size="sm" onClick={handleAcceptRequest} disabled>
+                                            <UserPlus className="h-4 w-4 mr-2" />
+                                            Confirm Request
+                                        </Button>
+                                    ) : (
+                                        <Button variant="outline" size="sm" onClick={handleAddFriend} disabled={isPending}>
+                                            <UserPlus className="h-4 w-4 mr-2" />
+                                            Add Friend
+                                        </Button>
+                                    )}
+
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
                                         onClick={handleMessage}
                                         disabled={isPending}
+                                        className="rounded-full"
                                     >
-                                        <MessageSquare className="h-4 w-4 mr-2" />
-                                        Message
+                                        <MessageSquare className="h-4 w-4" />
+                                        <span className="sr-only">Message</span>
                                     </Button>
 
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon">
+                                            <Button variant="ghost" size="icon" className="rounded-full">
                                                 <MoreHorizontal className="h-4 w-4" />
                                             </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end">
-                                            {!profile.isFriend && profile.friendshipStatus !== 'pending' && (
-                                                <DropdownMenuItem onClick={handleAddFriend}>
-                                                    <Users className="h-4 w-4 mr-2" />
-                                                    Add Friend
-                                                </DropdownMenuItem>
-                                            )}
                                             <DropdownMenuItem>
                                                 <Share2 className="h-4 w-4 mr-2" />
                                                 Share Profile
@@ -249,29 +292,29 @@ export function ProfileHeader({
 
                 {/* Stats */}
                 <div className="flex flex-wrap gap-4 sm:gap-6 mt-6">
-                    <StatItem 
+                    <StatItem
                         icon={<BookOpen className="h-4 w-4" />}
                         value={profile.total_books_read || 0}
                         label="Books Read"
                     />
-                    <StatItem 
+                    <StatItem
                         icon={<Star className="h-4 w-4" />}
                         value={profile.lending_reputation?.toFixed(1) || "5.0"}
                         label="Lender Rating"
                     />
-                    <StatItem 
+                    <StatItem
                         value={profile.total_books_lent || 0}
                         label="Books Lent"
                     />
-                    <StatItem 
+                    <StatItem
                         value={friendsCount}
                         label="Friends"
                     />
-                    <StatItem 
+                    <StatItem
                         value={followersCount}
                         label="Followers"
                     />
-                    <StatItem 
+                    <StatItem
                         value={followingCount}
                         label="Following"
                     />
@@ -291,14 +334,14 @@ export function ProfileHeader({
     )
 }
 
-function StatItem({ 
-    icon, 
-    value, 
-    label 
-}: { 
+function StatItem({
+    icon,
+    value,
+    label
+}: {
     icon?: React.ReactNode
     value: number | string
-    label: string 
+    label: string
 }) {
     return (
         <div className="flex items-center gap-2">

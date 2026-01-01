@@ -504,3 +504,64 @@ export async function getConnectionSuggestions() {
         return []
     }
 }
+
+export async function getMutualFriends(targetUserId: string) {
+    try {
+        const user = await getUser()
+        if (!user) return []
+
+        const supabase = await createClient()
+
+        // Get my friends
+        const { data: myFriendships } = await supabase
+            .from('friendships')
+            .select('requester_id, addressee_id')
+            .eq('status', 'accepted')
+            .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
+
+        if (!myFriendships) return []
+
+        const myFriendIds = new Set(
+            myFriendships.map((f: any) =>
+                f.requester_id === user.id ? f.addressee_id : f.requester_id
+            )
+        )
+
+        // Get target user's friends
+        const { data: targetFriendships } = await supabase
+            .from('friendships')
+            .select('requester_id, addressee_id')
+            .eq('status', 'accepted')
+            .or(`requester_id.eq.${targetUserId},addressee_id.eq.${targetUserId}`)
+
+        if (!targetFriendships) return []
+
+        const targetFriendIds = new Set(
+            targetFriendships.map((f: any) =>
+                f.requester_id === targetUserId ? f.addressee_id : f.requester_id
+            )
+        )
+
+        // Find mutuals
+        const mutualIds = [...myFriendIds].filter(id => targetFriendIds.has(id))
+
+        if (mutualIds.length === 0) return []
+
+        // Fetch profiles for mutual friends
+        const { data: mutuals, error } = await supabase
+            .from('profiles')
+            .select('id, full_name, username, profile_picture')
+            .in('id', mutualIds)
+            .limit(10)
+
+        if (error) {
+            console.error("Supabase error fetching mutuals:", error)
+            return []
+        }
+
+        return mutuals || []
+    } catch (error) {
+        console.error("Failed to get mutual friends:", error)
+        return []
+    }
+}

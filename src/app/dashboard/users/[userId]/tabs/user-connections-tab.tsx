@@ -8,7 +8,9 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { UserCheck, Users } from "lucide-react"
+import { UserCheck, Users, UserPlus } from "lucide-react"
+import { getMutualFriends, getPendingRequests, acceptFriendRequest, declineFriendRequest } from "@/app/actions/connections"
+import { toast } from "sonner"
 
 interface UserConnectionsTabProps {
     userId: string
@@ -27,7 +29,19 @@ export function UserConnectionsTab({ userId }: UserConnectionsTabProps) {
     const [friends, setFriends] = useState<UserConnection[]>([])
     const [followers, setFollowers] = useState<UserConnection[]>([])
     const [following, setFollowing] = useState<UserConnection[]>([])
+    const [mutuals, setMutuals] = useState<UserConnection[]>([])
+    const [pendingRequests, setPendingRequests] = useState<any[]>([])
+
+    // Derived state
+    const [isOwnProfile, setIsOwnProfile] = useState(false)
     const [loading, setLoading] = useState(true)
+
+    // Check if it's own profile safely
+    useEffect(() => {
+        createClient().auth.getUser().then(({ data }) => {
+            setIsOwnProfile(data.user?.id === userId)
+        })
+    }, [userId])
 
     useEffect(() => {
         async function fetchConnections() {
@@ -47,8 +61,8 @@ export function UserConnectionsTab({ userId }: UserConnectionsTabProps) {
                 .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`)
 
             const friendsList = (friendships as any[])?.map(f => {
-                const friend = f.requester?.id === userId 
-                    ? f.addressee 
+                const friend = f.requester?.id === userId
+                    ? f.addressee
                     : f.requester
                 return friend as UserConnection
             }).filter(Boolean) || []
@@ -75,11 +89,46 @@ export function UserConnectionsTab({ userId }: UserConnectionsTabProps) {
 
             setFollowing((followingData as any[])?.map(f => f.following as UserConnection) || [])
 
+            // Fetch extra data based on whose profile it is
+            // We need to know who the current user is first to determine if we should fetch requests or mutuals
+            const { data: { user } } = await supabase.auth.getUser()
+
+            if (user?.id === userId) {
+                // My profile -> fetch pending requests
+                const requests = await getPendingRequests()
+                setPendingRequests(requests)
+            } else if (user) {
+                // Other profile -> fetch mutual friends
+                const mutualFriends = await getMutualFriends(userId)
+                setMutuals(mutualFriends as UserConnection[])
+            }
+
             setLoading(false)
         }
 
         fetchConnections()
     }, [userId])
+
+    const handleAccept = async (requestId: string) => {
+        try {
+            await acceptFriendRequest(requestId)
+            toast.success("Friend request accepted")
+            setPendingRequests(prev => prev.filter(req => req.id !== requestId))
+            // Optionally refresh friends list
+        } catch (error) {
+            toast.error("Failed to accept request")
+        }
+    }
+
+    const handleDecline = async (requestId: string) => {
+        try {
+            await declineFriendRequest(requestId)
+            toast.success("Friend request declined")
+            setPendingRequests(prev => prev.filter(req => req.id !== requestId))
+        } catch (error) {
+            toast.error("Failed to decline request")
+        }
+    }
 
     const renderUserList = (users: UserConnection[], emptyMessage: string) => {
         if (loading) {
@@ -146,6 +195,42 @@ export function UserConnectionsTab({ userId }: UserConnectionsTabProps) {
         )
     }
 
+    const renderRequestsList = () => {
+        if (loading) return <div>Loading...</div>
+        if (pendingRequests.length === 0) return <div className="text-center py-12 text-muted-foreground">No pending requests</div>
+
+        return (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {pendingRequests.map((req) => (
+                    <Card key={req.id}>
+                        <CardContent className="p-4">
+                            <div className="flex items-center gap-3">
+                                <Link href={`/dashboard/users/${req.requester.id}`}>
+                                    <div className="relative h-12 w-12 rounded-full overflow-hidden bg-muted">
+                                        <Image
+                                            src={req.requester.profile_picture || ""}
+                                            alt={req.requester.full_name}
+                                            fill
+                                            className="object-cover"
+                                        />
+                                    </div>
+                                </Link>
+                                <div className="flex-1 min-w-0">
+                                    <p className="font-medium truncate">{req.requester.full_name}</p>
+                                    <p className="text-xs text-muted-foreground">Sent a request</p>
+                                </div>
+                            </div>
+                            <div className="flex gap-2 mt-3">
+                                <Button size="sm" className="flex-1" onClick={() => handleAccept(req.id)}>Accept</Button>
+                                <Button size="sm" variant="outline" className="flex-1" onClick={() => handleDecline(req.id)}>Decline</Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                ))}
+            </div>
+        )
+    }
+
     return (
         <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList>
@@ -162,6 +247,24 @@ export function UserConnectionsTab({ userId }: UserConnectionsTabProps) {
                 </TabsTrigger>
             </TabsList>
 
+            {isOwnProfile && (
+                <TabsList className="mt-2 w-full justify-start overflow-x-auto scrollbar-hide bg-transparent p-0">
+                    <TabsTrigger value="requests" className="gap-2 data-[state=active]:bg-muted">
+                        <UserPlus className="h-4 w-4" />
+                        Requests ({pendingRequests.length})
+                    </TabsTrigger>
+                </TabsList>
+            )}
+
+            {!isOwnProfile && mutuals.length > 0 && (
+                <TabsList className="mt-2 w-full justify-start overflow-x-auto scrollbar-hide bg-transparent p-0">
+                    <TabsTrigger value="mutuals" className="gap-2 data-[state=active]:bg-muted">
+                        <Users className="h-4 w-4" />
+                        Mutual Friends ({mutuals.length})
+                    </TabsTrigger>
+                </TabsList>
+            )}
+
             <TabsContent value="friends" className="mt-4">
                 {renderUserList(friends, "No friends yet.")}
             </TabsContent>
@@ -172,6 +275,14 @@ export function UserConnectionsTab({ userId }: UserConnectionsTabProps) {
 
             <TabsContent value="following" className="mt-4">
                 {renderUserList(following, "Not following anyone yet.")}
+            </TabsContent>
+
+            <TabsContent value="requests" className="mt-4">
+                {renderRequestsList()}
+            </TabsContent>
+
+            <TabsContent value="mutuals" className="mt-4">
+                {renderUserList(mutuals, "No mutual friends.")}
             </TabsContent>
         </Tabs>
     )

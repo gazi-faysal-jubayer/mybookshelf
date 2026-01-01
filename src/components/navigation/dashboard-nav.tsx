@@ -32,9 +32,9 @@ export function SidebarNav() {
                     href={item.href}
                     icon={item.icon}
                     exact={item.exact}
-                    className="flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:text-primary"
+                    className="flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:bg-muted text-muted-foreground hover:text-primary whitespace-nowrap overflow-hidden"
                 >
-                    {item.label}
+                    <span className="truncate">{item.label}</span>
                 </NavLink>
             ))}
             <div className="my-4 border-t" />
@@ -43,9 +43,9 @@ export function SidebarNav() {
                     key={item.href}
                     href={item.href}
                     icon={item.icon}
-                    className="flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:text-primary"
+                    className="flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:bg-muted text-muted-foreground hover:text-primary whitespace-nowrap overflow-hidden"
                 >
-                    {item.label}
+                    <span className="truncate">{item.label}</span>
                 </NavLink>
             ))}
         </nav>
