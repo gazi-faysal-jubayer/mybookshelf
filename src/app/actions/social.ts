@@ -41,10 +41,10 @@ export async function sendFriendRequest(addresseeId: string) {
         user_id: addresseeId,
         type: 'info',
         message: 'You have a new friend request!',
-        link: '/dashboard/friends'
+        link: '/dashboard/connections?tab=requests'
     })
 
-    revalidatePath('/dashboard/friends')
+    revalidatePath('/dashboard/connections')
     return { success: true }
 }
 
@@ -90,7 +90,7 @@ export async function respondToFriendRequest(requestId: string, accept: boolean)
         })
     }
 
-    revalidatePath('/dashboard/friends')
+    revalidatePath('/dashboard/connections')
     return { success: true }
 }
 
@@ -136,7 +136,7 @@ export async function getFriends(userId?: string) {
         const friend = (f.requester as any).id === targetUserId ? f.addressee : f.requester
         return { ...friend, friendshipId: f.id }
     })
-    
+
     return { friends }
 }
 
@@ -523,7 +523,7 @@ export async function commentOnActivity(activityId: string, content: string) {
         })
 
     if (error) throw new Error("Failed to comment")
-    
+
     revalidatePath('/dashboard')
     return { success: true }
 }

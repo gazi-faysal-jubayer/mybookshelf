@@ -4,7 +4,8 @@ import { useTransition } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Check, X, Loader2 } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Check, X, Loader2, Clock } from "lucide-react"
 import { acceptFriendRequest, declineFriendRequest } from "@/app/actions/connections"
 import { toast } from "sonner"
 import Link from "next/link"
@@ -27,17 +28,29 @@ interface PendingRequestsProps {
 export function PendingRequests({ requests }: PendingRequestsProps) {
     if (requests.length === 0) {
         return (
-            <div className="text-center py-8 text-muted-foreground">
-                No pending friend requests
-            </div>
+            <Card className="border-dashed">
+                <CardContent className="py-12 flex flex-col items-center justify-center text-center text-muted-foreground">
+                    <Clock className="h-12 w-12 mb-4 opacity-20" />
+                    <h3 className="text-lg font-medium text-foreground">No pending requests</h3>
+                    <p className="text-sm">When people send you friend requests, they'll appear here.</p>
+                </CardContent>
+            </Card>
         )
     }
 
     return (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {requests.map((request) => (
-                <PendingRequestCard key={request.id} request={request} />
-            ))}
+        <div className="space-y-4">
+            <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-lg flex items-center gap-2">
+                    Friend Requests
+                    <Badge variant="secondary">{requests.length}</Badge>
+                </h3>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {requests.map((request) => (
+                    <PendingRequestCard key={request.id} request={request} />
+                ))}
+            </div>
         </div>
     )
 }

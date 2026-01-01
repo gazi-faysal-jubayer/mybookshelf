@@ -8,7 +8,12 @@ import { Badge } from "@/components/ui/badge"
 
 export const dynamic = 'force-dynamic'
 
-export default async function ConnectionsPage() {
+export default async function ConnectionsPage({
+    searchParams,
+}: {
+    searchParams: Promise<{ tab?: string }>
+}) {
+    const { tab } = await searchParams
     const [friends, following, followers, pendingRequests, suggestions] = await Promise.all([
         getFriends(),
         getFollowing(),
@@ -16,6 +21,8 @@ export default async function ConnectionsPage() {
         getPendingRequests(),
         getConnectionSuggestions(),
     ])
+
+    const defaultTab = tab || "friends"
 
     return (
         <div className="space-y-6">
@@ -26,7 +33,7 @@ export default async function ConnectionsPage() {
                 </p>
             </div>
 
-            <Tabs defaultValue="friends" className="space-y-6">
+            <Tabs defaultValue={defaultTab} className="space-y-6">
                 <TabsList className="flex flex-wrap h-auto gap-1">
                     <TabsTrigger value="friends" className="gap-1.5">
                         <UserCheck className="h-4 w-4" />
