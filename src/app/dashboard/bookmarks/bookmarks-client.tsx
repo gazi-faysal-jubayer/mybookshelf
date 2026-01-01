@@ -5,6 +5,7 @@ import { PostCard } from "@/components/feed/post-card"
 import { getBookmarkedPosts } from "@/app/actions/posts"
 import { Button } from "@/components/ui/button"
 import { Loader2, Bookmark } from "lucide-react"
+import Link from "next/link"
 
 interface BookmarksClientProps {
     initialPosts: any[]
@@ -37,12 +38,19 @@ export function BookmarksClient({ initialPosts, initialCursor, currentUserId }: 
 
     if (posts.length === 0) {
         return (
-            <div className="text-center py-12">
-                <Bookmark className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-medium">No bookmarks yet</h3>
-                <p className="text-muted-foreground text-sm mt-1">
-                    When you bookmark a post, it will appear here.
+            <div className="text-center py-12 border rounded-lg border-dashed bg-muted/10">
+                <div className="h-16 w-16 mx-auto rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                    <Bookmark className="h-8 w-8 text-primary" />
+                </div>
+                <h3 className="text-lg font-bold">No bookmarks yet</h3>
+                <p className="text-muted-foreground text-sm mt-2 max-w-xs mx-auto mb-6">
+                    Save interesting posts, reviews, and reading updates to find them easily later.
                 </p>
+                <Button asChild variant="outline">
+                    <Link href="/dashboard/feed">
+                        Browse Feed
+                    </Link>
+                </Button>
             </div>
         )
     }
@@ -57,7 +65,7 @@ export function BookmarksClient({ initialPosts, initialCursor, currentUserId }: 
                     onDelete={() => handlePostDeleted(post.id)}
                 />
             ))}
-            
+
             {cursor && (
                 <div className="text-center pt-4">
                     <Button

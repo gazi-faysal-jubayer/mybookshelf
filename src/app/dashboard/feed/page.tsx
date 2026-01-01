@@ -1,5 +1,6 @@
 import { getUser } from "@/lib/supabase/server"
 import { getFeed } from "@/app/actions/posts"
+import { getConnectionSuggestions } from "@/app/actions/connections"
 import { FeedClient } from "@/components/feed/feed-client"
 import { redirect } from "next/navigation"
 
@@ -9,6 +10,7 @@ export default async function FeedPage() {
 
     // Initial load with global feed
     const { posts, nextCursor } = await getFeed('global')
+    const suggestions = await getConnectionSuggestions()
 
     return (
         <div className="max-w-2xl lg:max-w-3xl mx-auto">
@@ -23,6 +25,7 @@ export default async function FeedPage() {
                 initialCursor={nextCursor}
                 currentUserId={user.id}
                 initialMode="global"
+                suggestions={suggestions}
             />
         </div>
     )

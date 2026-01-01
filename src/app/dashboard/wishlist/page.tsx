@@ -1,6 +1,8 @@
 import { createClient, getUser } from "@/lib/supabase/server"
 import { BookCard } from "@/components/books/book-card"
 import { SearchX } from "lucide-react"
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
 
 export default async function WishlistPage() {
     const user = await getUser()
@@ -23,12 +25,21 @@ export default async function WishlistPage() {
             <h1 className="text-3xl font-bold tracking-tight">My Wishlist</h1>
 
             {wishlistBooks.length === 0 ? (
-                <div className="flex flex-col items-center justify-center min-h-[400px] border border-dashed rounded-lg bg-muted/50 text-center p-8">
-                    <SearchX className="h-12 w-12 text-muted-foreground mb-4" />
-                    <h3 className="text-xl font-semibold mb-2">Your wishlist is empty</h3>
-                    <p className="text-muted-foreground max-w-sm">
-                        Books you mark as "Wishlist" will appear here. Add books you want to read or buy later.
-                    </p>
+                <div className="flex flex-col items-center justify-center min-h-[400px] border border-dashed rounded-lg bg-muted/10 text-center p-8 gap-6">
+                    <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center">
+                        <SearchX className="h-10 w-10 text-primary" />
+                    </div>
+                    <div className="space-y-2 max-w-sm">
+                        <h3 className="text-xl font-semibold">Your wishlist is empty</h3>
+                        <p className="text-muted-foreground">
+                            Keep track of books you want to read. Search for any book and click "Add to Wishlist".
+                        </p>
+                    </div>
+                    <Button asChild>
+                        <Link href="/dashboard/discover">
+                            Browse Books
+                        </Link>
+                    </Button>
                 </div>
             ) : (
                 <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -36,7 +47,8 @@ export default async function WishlistPage() {
                         <BookCard key={book.id} book={{ ...book, _id: book.id }} />
                     ))}
                 </div>
-            )}
-        </div>
+            )
+            }
+        </div >
     )
 }

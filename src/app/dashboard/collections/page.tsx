@@ -54,14 +54,16 @@ export default async function CollectionsPage() {
             <Separator />
 
             {collectionsList.length === 0 ? (
-                <div className="flex flex-col items-center justify-center min-h-[400px] gap-4 rounded-lg border border-dashed p-8 text-center animate-in fade-in-50">
-                    <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-muted">
-                        <Folder className="h-10 w-10 text-muted-foreground" />
+                <div className="flex flex-col items-center justify-center min-h-[400px] gap-6 rounded-lg border border-dashed p-8 text-center animate-in fade-in-50 bg-muted/10">
+                    <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
+                        <Folder className="h-10 w-10 text-primary" />
                     </div>
-                    <h3 className="text-lg font-bold">No collections yet</h3>
-                    <p className="text-sm text-muted-foreground max-w-sm">
-                        Create your first collection to start organizing your library.
-                    </p>
+                    <div className="max-w-md space-y-2">
+                        <h3 className="text-xl font-bold">Organize your library</h3>
+                        <p className="text-muted-foreground">
+                            Collections help you group books together. Create lists like "Summer Reads", "Sci-Fi Favorites", or "To Buy".
+                        </p>
+                    </div>
                     <CreateCollectionDialog />
                 </div>
             ) : (
