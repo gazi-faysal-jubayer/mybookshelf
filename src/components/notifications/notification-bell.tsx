@@ -12,7 +12,8 @@ import {
     UserCheck,
     Users,
     Check,
-    X
+    X,
+    BookOpen
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -25,6 +26,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { getNotifications, markAsRead, markAllAsRead } from "@/app/actions/notifications"
 import { acceptFriendRequest, declineFriendRequest } from "@/app/actions/connections"
+import { respondToBookAddRequest } from "@/app/actions/book"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn, formatDistanceToNow } from "@/lib/utils"
 import { toast } from "sonner"
@@ -41,6 +43,7 @@ interface Notification {
     related_user_id?: string
     related_post_id?: string
     related_friendship_id?: string
+    related_book_request_id?: string
     related_user?: {
         id: string
         username: string
@@ -63,6 +66,12 @@ function getNotificationIcon(category?: string) {
             return <MessageCircle className="h-4 w-4 text-orange-500" />
         case 'post_share':
             return <Share2 className="h-4 w-4 text-teal-500" />
+        case 'book_add_request':
+            return <BookOpen className="h-4 w-4 text-amber-500" />
+        case 'book_add_approved':
+            return <BookOpen className="h-4 w-4 text-green-500" />
+        case 'book_add_declined':
+            return <BookOpen className="h-4 w-4 text-gray-500" />
         default:
             return <Bell className="h-4 w-4 text-muted-foreground" />
     }
@@ -127,6 +136,22 @@ export function NotificationBell() {
                 router.refresh()
             } catch (error: any) {
                 toast.error(error.message || "Failed to decline request")
+            }
+        })
+    }
+
+    const handleRespondToBookRequest = async (requestId: string, notificationId: string, response: 'approved' | 'declined', e: React.MouseEvent) => {
+        e.stopPropagation()
+        e.preventDefault()
+        startTransition(async () => {
+            try {
+                await respondToBookAddRequest(requestId, response)
+                await markAsRead(notificationId)
+                setNotifications(prev => prev.filter(n => n._id !== notificationId))
+                toast.success(response === 'approved' ? "Book added to your shelf!" : "Request declined")
+                router.refresh()
+            } catch (error: any) {
+                toast.error(error.message || "Failed to process request")
             }
         })
     }
@@ -251,6 +276,43 @@ export function NotificationBell() {
                                                     onClick={(e) => handleDeclineFriendRequest(
                                                         notification.related_friendship_id!,
                                                         notification._id,
+                                                        e
+                                                    )}
+                                                    disabled={isPending}
+                                                >
+                                                    <X className="h-3 w-3 mr-1" />
+                                                    Decline
+                                                </Button>
+                                            </div>
+                                        )}
+
+                                    {/* Book add request action buttons */}
+                                    {notification.notification_category === 'book_add_request' &&
+                                        notification.related_book_request_id &&
+                                        !notification.is_read && (
+                                            <div className="flex gap-2 ml-7">
+                                                <Button
+                                                    size="sm"
+                                                    className="h-7 text-xs"
+                                                    onClick={(e) => handleRespondToBookRequest(
+                                                        notification.related_book_request_id!,
+                                                        notification._id,
+                                                        'approved',
+                                                        e
+                                                    )}
+                                                    disabled={isPending}
+                                                >
+                                                    <Check className="h-3 w-3 mr-1" />
+                                                    Add to Shelf
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="h-7 text-xs"
+                                                    onClick={(e) => handleRespondToBookRequest(
+                                                        notification.related_book_request_id!,
+                                                        notification._id,
+                                                        'declined',
                                                         e
                                                     )}
                                                     disabled={isPending}

@@ -544,3 +544,60 @@ export async function commentOnActivity(activityId: string, content: string) {
     revalidatePath('/dashboard')
     return { success: true }
 }
+
+// =====================================================
+// USER SEARCH FOR MENTIONS
+// =====================================================
+
+export async function searchUsersForMention(query: string) {
+    const user = await getUser()
+    if (!user) return []
+
+    if (!query || query.length < 1) return []
+
+    const supabase = await createClient()
+
+    // Get user's friends and following for priority matching
+    const { data: connections } = await supabase
+        .from('friendships')
+        .select('requester_id, addressee_id')
+        .eq('status', 'accepted')
+        .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
+
+    const { data: following } = await supabase
+        .from('follows')
+        .select('following_id')
+        .eq('follower_id', user.id)
+
+    // Collect connected user IDs
+    const connectedIds = new Set<string>()
+    connections?.forEach(c => {
+        if (c.requester_id === user.id) connectedIds.add(c.addressee_id)
+        else connectedIds.add(c.requester_id)
+    })
+    following?.forEach(f => connectedIds.add(f.following_id))
+
+    // Search profiles matching the query
+    const { data: profiles, error } = await supabase
+        .from('profiles')
+        .select('id, username, full_name, profile_picture')
+        .neq('id', user.id)
+        .or(`username.ilike.%${query}%,full_name.ilike.%${query}%`)
+        .limit(10)
+
+    if (error) {
+        console.error("Search users error:", error)
+        return []
+    }
+
+    // Sort: connected users first, then alphabetically
+    const sorted = (profiles || []).sort((a, b) => {
+        const aConnected = connectedIds.has(a.id)
+        const bConnected = connectedIds.has(b.id)
+        if (aConnected && !bConnected) return -1
+        if (!aConnected && bConnected) return 1
+        return (a.full_name || a.username).localeCompare(b.full_name || b.username)
+    })
+
+    return sorted.slice(0, 8)
+}

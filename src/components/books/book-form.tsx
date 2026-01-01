@@ -1,11 +1,14 @@
 "use client"
 
+import { useState } from "react"
+
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { CalendarIcon } from "lucide-react"
 import { format } from "date-fns"
 import { ImageUpload } from "@/components/upload/image-upload"
+import { UserMentionInput } from "@/components/ui/user-mention-input"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -53,6 +56,7 @@ const bookSchema = z.object({
     review: z.string().optional(),
     borrowed_info: z.object({
         owner_name: z.string().optional(),
+        owner_user_id: z.string().optional(),
         borrow_date: z.date().optional(),
         due_date: z.date().optional(),
     }).optional(),
@@ -80,6 +84,13 @@ interface BookFormProps {
 
 export function BookForm({ initialData, bookId }: BookFormProps) {
     const router = useRouter()
+    const [selectedOwner, setSelectedOwner] = useState<{
+        id: string
+        username: string
+        full_name: string | null
+        profile_picture: string | null
+    } | null>(null)
+
     const form = useForm<BookFormValues>({
         resolver: zodResolver(bookSchema) as any,
         defaultValues: initialData || defaultValues,
@@ -267,7 +278,16 @@ export function BookForm({ initialData, bookId }: BookFormProps) {
                                 <FormItem>
                                     <FormLabel>Owner Name</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="John Doe" {...field} />
+                                        <UserMentionInput
+                                            value={field.value || ''}
+                                            onChange={(val) => field.onChange(val)}
+                                            selectedUser={selectedOwner}
+                                            onUserSelect={(user) => {
+                                                setSelectedOwner(user)
+                                                form.setValue('borrowed_info.owner_user_id', user?.id || undefined)
+                                            }}
+                                            placeholder="Type @ to mention owner..."
+                                        />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
