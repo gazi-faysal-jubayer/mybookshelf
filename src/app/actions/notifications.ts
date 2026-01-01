@@ -12,28 +12,37 @@ export async function getNotifications() {
 
         const { data: notifications, error } = await supabase
             .from('notifications')
-            .select(`
-                *,
-                related_user:related_user_id (
-                    id,
-                    username,
-                    full_name,
-                    profile_picture
-                )
-            `)
+            .select('*')
             .eq('user_id', user.id)
             .order('created_at', { ascending: false })
             .limit(20)
 
         if (error) {
-            console.error("Supabase error:", error)
+            console.error("Supabase notification fetch error:", error)
             return []
         }
 
-        // Transform to match old format with _id
+        // Fetch related user details if needed
+        const relatedUserIds = [...new Set(notifications
+            .map((n: any) => n.related_user_id)
+            .filter(Boolean))] as string[]
+
+        let profileMap: Record<string, any> = {}
+        if (relatedUserIds.length > 0) {
+            const { data: profiles } = await supabase
+                .from('profiles')
+                .select('id, username, full_name, profile_picture')
+                .in('id', relatedUserIds)
+
+            if (profiles) {
+                profileMap = Object.fromEntries(profiles.map(p => [p.id, p]))
+            }
+        }
+
         return notifications.map(n => ({
             ...n,
-            _id: n.id
+            _id: n.id,
+            related_user: n.related_user_id ? profileMap[n.related_user_id] : null
         }))
     } catch (error) {
         console.error("Failed to fetch notifications:", error)

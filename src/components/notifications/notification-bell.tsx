@@ -44,8 +44,8 @@ interface Notification {
     related_user?: {
         id: string
         username: string
-        full_name: string
-        profile_picture: string
+        full_name: string | null
+        profile_picture: string | null
     }
 }
 
