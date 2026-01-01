@@ -29,6 +29,7 @@ import {
     Share2,
     CheckCircle
 } from "lucide-react"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { toast } from "sonner"
 
 interface Profile {
@@ -157,19 +158,17 @@ export function ProfileHeader({
             <div className="px-4 pb-4">
                 <div className="flex flex-col md:flex-row md:items-end gap-4 relative">
                     {/* Avatar - Moved up to overlap cover photo properly */}
-                    <div className="-mt-12 md:-mt-16 relative h-24 w-24 md:h-32 md:w-32 rounded-full border-4 border-background overflow-hidden bg-muted flex-shrink-0 z-10">
-                        {profile.profile_picture ? (
-                            <Image
-                                src={profile.profile_picture}
+                    <div className="-mt-12 md:-mt-16 z-20 relative">
+                        <Avatar className="h-24 w-24 md:h-32 md:w-32 border-4 border-background">
+                            <AvatarImage
+                                src={profile.profile_picture || undefined}
                                 alt={displayName}
-                                fill
                                 className="object-cover"
                             />
-                        ) : (
-                            <div className="w-full h-full flex items-center justify-center text-3xl font-bold bg-muted text-muted-foreground">
+                            <AvatarFallback className="text-3xl font-bold bg-muted text-muted-foreground">
                                 {displayName[0]?.toUpperCase()}
-                            </div>
-                        )}
+                            </AvatarFallback>
+                        </Avatar>
                     </div>
 
                     {/* Name & Actions */}
