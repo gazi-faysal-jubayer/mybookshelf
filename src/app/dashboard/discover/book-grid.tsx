@@ -10,7 +10,7 @@ interface BookGridProps {
 
 export function BookGrid({ books }: BookGridProps) {
     return (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 min-[400px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {books.map((book) => (
                 <DiscoverBookCard key={book.id} book={book} />
             ))}
@@ -100,9 +100,9 @@ function DiscoverBookCard({ book }: { book: any }) {
                                     {owner.username || owner.full_name || 'Anonymous'}
                                 </p>
                                 {owner.city && (
-                                    <p className="text-xs text-muted-foreground flex items-center gap-0.5">
-                                        <MapPin className="h-3 w-3" />
-                                        {owner.city}
+                                    <p className="text-xs text-muted-foreground flex items-center gap-0.5 truncate">
+                                        <MapPin className="h-3 w-3 flex-shrink-0" />
+                                        <span className="truncate">{owner.city}</span>
                                     </p>
                                 )}
                             </div>

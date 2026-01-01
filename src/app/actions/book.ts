@@ -236,3 +236,122 @@ export async function getUserBooks() {
         return []
     }
 }
+
+export async function bulkDeleteBooks(ids: string[]) {
+    try {
+        const user = await getUser()
+        if (!user) {
+            throw new Error("Unauthorized")
+        }
+
+        if (ids.length === 0) {
+            return { success: true, deleted: 0 }
+        }
+
+        const supabase = await createClient()
+
+        const { error, count } = await supabase
+            .from('books')
+            .delete()
+            .in('id', ids)
+            .eq('user_id', user.id)
+
+        if (error) {
+            console.error("Supabase error:", error)
+            throw new Error("Failed to delete books")
+        }
+
+        revalidatePath("/dashboard")
+        revalidatePath("/dashboard/books")
+
+        return { success: true, deleted: count || ids.length }
+    } catch (error) {
+        console.error("Failed to delete books:", error)
+        throw new Error("Failed to delete books")
+    }
+}
+
+export async function bulkUpdateStatus(ids: string[], readingStatus: string) {
+    try {
+        const user = await getUser()
+        if (!user) {
+            throw new Error("Unauthorized")
+        }
+
+        if (ids.length === 0) {
+            return { success: true, updated: 0 }
+        }
+
+        const supabase = await createClient()
+
+        const { error, count } = await supabase
+            .from('books')
+            .update({ reading_status: readingStatus })
+            .in('id', ids)
+            .eq('user_id', user.id)
+
+        if (error) {
+            console.error("Supabase error:", error)
+            throw new Error("Failed to update book status")
+        }
+
+        revalidatePath("/dashboard")
+        revalidatePath("/dashboard/books")
+
+        return { success: true, updated: count || ids.length }
+    } catch (error) {
+        console.error("Failed to update book status:", error)
+        throw new Error("Failed to update book status")
+    }
+}
+
+export async function bulkAddToCollection(bookIds: string[], collectionId: string) {
+    try {
+        const user = await getUser()
+        if (!user) {
+            throw new Error("Unauthorized")
+        }
+
+        if (bookIds.length === 0) {
+            return { success: true, added: 0 }
+        }
+
+        const supabase = await createClient()
+
+        // First verify the collection belongs to the user
+        const { data: collection, error: collectionError } = await supabase
+            .from('collections')
+            .select('id')
+            .eq('id', collectionId)
+            .eq('user_id', user.id)
+            .single()
+
+        if (collectionError || !collection) {
+            throw new Error("Collection not found")
+        }
+
+        // Create collection_books entries, ignoring duplicates
+        const entries = bookIds.map((bookId) => ({
+            collection_id: collectionId,
+            book_id: bookId,
+        }))
+
+        const { error } = await supabase
+            .from('collection_books')
+            .upsert(entries, { onConflict: 'collection_id,book_id', ignoreDuplicates: true })
+
+        if (error) {
+            console.error("Supabase error:", error)
+            throw new Error("Failed to add books to collection")
+        }
+
+        revalidatePath("/dashboard")
+        revalidatePath("/dashboard/books")
+        revalidatePath("/dashboard/collections")
+
+        return { success: true, added: bookIds.length }
+    } catch (error) {
+        console.error("Failed to add books to collection:", error)
+        throw new Error("Failed to add books to collection")
+    }
+}

@@ -1,20 +1,11 @@
 import Link from "next/link"
-import { Filter, Grid, List, Plus, Search } from "lucide-react"
+import { Plus } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import {
-    DropdownMenu,
-    DropdownMenuCheckboxItem,
-    DropdownMenuContent,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { Separator } from "@/components/ui/separator"
 import { createClient, getUserWithProfile } from "@/lib/supabase/server"
-import { BookCard } from "@/components/books/book-card"
-import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { BooksClientWrapper } from "@/components/books/books-client-wrapper"
 
 export default async function BooksPage() {
     const supabase = await createClient()
@@ -62,63 +53,36 @@ export default async function BooksPage() {
 
             {/* Tabs for different views */}
             <Tabs defaultValue="all" className="w-full">
-                <div className="flex items-center justify-between mb-4">
-                    <TabsList>
-                        <TabsTrigger value="all">All ({booksList.length})</TabsTrigger>
-                        <TabsTrigger value="owned">Owned ({ownedBooks.length})</TabsTrigger>
-                        <TabsTrigger value="reading">Reading ({currentlyReading.length})</TabsTrigger>
-                        <TabsTrigger value="lent">Lent Out ({lentOutBooks.length})</TabsTrigger>
-                        <TabsTrigger value="wishlist">Wishlist ({wishlistBooks.length})</TabsTrigger>
+                <div className="flex items-center justify-between mb-4 overflow-x-auto">
+                    <TabsList className="inline-flex h-auto min-w-max">
+                        <TabsTrigger value="all" className="text-xs sm:text-sm">All ({booksList.length})</TabsTrigger>
+                        <TabsTrigger value="owned" className="text-xs sm:text-sm">Owned ({ownedBooks.length})</TabsTrigger>
+                        <TabsTrigger value="reading" className="text-xs sm:text-sm">Reading ({currentlyReading.length})</TabsTrigger>
+                        <TabsTrigger value="lent" className="text-xs sm:text-sm">Lent ({lentOutBooks.length})</TabsTrigger>
+                        <TabsTrigger value="wishlist" className="text-xs sm:text-sm">Wishlist ({wishlistBooks.length})</TabsTrigger>
                     </TabsList>
                 </div>
 
                 <TabsContent value="all">
-                    <BookGrid books={booksList} />
+                    <BooksClientWrapper books={booksList} />
                 </TabsContent>
 
                 <TabsContent value="owned">
-                    <BookGrid books={ownedBooks} emptyMessage="No owned books yet" />
+                    <BooksClientWrapper books={ownedBooks} emptyMessage="No owned books yet" />
                 </TabsContent>
 
                 <TabsContent value="reading">
-                    <BookGrid books={currentlyReading} emptyMessage="No books currently being read" />
+                    <BooksClientWrapper books={currentlyReading} emptyMessage="No books currently being read" />
                 </TabsContent>
 
                 <TabsContent value="lent">
-                    <BookGrid books={lentOutBooks} emptyMessage="No books currently lent out" />
+                    <BooksClientWrapper books={lentOutBooks} emptyMessage="No books currently lent out" />
                 </TabsContent>
 
                 <TabsContent value="wishlist">
-                    <BookGrid books={wishlistBooks} emptyMessage="Your wishlist is empty" />
+                    <BooksClientWrapper books={wishlistBooks} emptyMessage="Your wishlist is empty" />
                 </TabsContent>
             </Tabs>
-        </div>
-    )
-}
-
-function BookGrid({ books, emptyMessage = "No books found" }: { books: any[], emptyMessage?: string }) {
-    if (books.length === 0) {
-        return (
-            <div className="flex flex-col items-center justify-center min-h-[300px] gap-4 rounded-lg border border-dashed p-8 text-center animate-in fade-in-50">
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-muted">
-                    <Plus className="h-8 w-8 text-muted-foreground" />
-                </div>
-                <h3 className="text-lg font-semibold">{emptyMessage}</h3>
-                <p className="text-sm text-muted-foreground max-w-sm">
-                    Add books to your collection to see them here.
-                </p>
-                <Button asChild>
-                    <Link href="/dashboard/books/add">Add a book</Link>
-                </Button>
-            </div>
-        )
-    }
-
-    return (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {books.map((book) => (
-                <BookCard key={book.id} book={{ ...book, _id: book.id }} />
-            ))}
         </div>
     )
 }
