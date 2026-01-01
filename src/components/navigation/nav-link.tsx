@@ -12,6 +12,7 @@ interface NavLinkProps {
     className?: string
     exact?: boolean
     variant?: "desktop" | "mobile"
+    onClick?: () => void
 }
 
 export function NavLink({
@@ -20,7 +21,8 @@ export function NavLink({
     icon: Icon,
     className,
     exact = false,
-    variant = "desktop"
+    variant = "desktop",
+    onClick
 }: NavLinkProps) {
     const pathname = usePathname()
 
@@ -37,6 +39,7 @@ export function NavLink({
         return (
             <Link
                 href={href}
+                onClick={onClick}
                 className={cn(
                     "flex items-center gap-3 rounded-lg px-3 py-2 transition-all",
                     isActiveAdjusted

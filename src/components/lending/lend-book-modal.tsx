@@ -142,6 +142,7 @@ export function LendBookModal({ bookId, isOpen, onClose }: LendBookModalProps) {
                                                     date < new Date()
                                                 }
                                                 initialFocus
+                                                className="rounded-md border"
                                             />
                                         </PopoverContent>
                                     </Popover>

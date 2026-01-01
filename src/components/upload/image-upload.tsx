@@ -1,9 +1,16 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react";
-import { X, ImageIcon, Loader2, Upload } from "lucide-react";
+import { X, ImageIcon, Loader2, Upload, Camera } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 
@@ -15,6 +22,10 @@ interface ImageUploadProps {
 export function ImageUpload({ value, onChange }: ImageUploadProps) {
     const [isUploading, setIsUploading] = useState(false);
     const [preview, setPreview] = useState<string | null>(null);
+    const [isCameraOpen, setIsCameraOpen] = useState(false);
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const streamRef = useRef<MediaStream | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Clear preview when value changes externally
@@ -48,7 +59,7 @@ export function ImageUpload({ value, onChange }: ImageUploadProps) {
         setIsUploading(true);
         try {
             const supabase = createClient();
-            
+
             // Get current user
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) {
@@ -94,6 +105,73 @@ export function ImageUpload({ value, onChange }: ImageUploadProps) {
         }
     };
 
+    const startCamera = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            if (videoRef.current) {
+                videoRef.current.srcObject = stream;
+            }
+            streamRef.current = stream;
+        } catch (err) {
+            console.error("Error accessing camera:", err);
+            toast.error("Could not access camera");
+            setIsCameraOpen(false);
+        }
+    };
+
+    const stopCamera = () => {
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => track.stop());
+            streamRef.current = null;
+        }
+        setIsCameraOpen(false);
+    };
+
+    const captureImage = () => {
+        if (!videoRef.current || !canvasRef.current) return;
+
+        const context = canvasRef.current.getContext('2d');
+        if (!context) return;
+
+        // Set canvas dimensions to match video
+        canvasRef.current.width = videoRef.current.videoWidth;
+        canvasRef.current.height = videoRef.current.videoHeight;
+
+        // Draw video frame to canvas
+        context.drawImage(videoRef.current, 0, 0);
+
+        // Convert to blob/file
+        canvasRef.current.toBlob((blob) => {
+            if (!blob) return;
+            const file = new File([blob], "camera-capture.jpg", { type: "image/jpeg" });
+
+            // Re-use existing upload logic
+            // Create a fake event object to reuse handleFileSelect or just extract the logic
+            // For simplicity, let's extract the core logic or just mock the event
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(file);
+
+            // Create a synthetic event
+            const event = {
+                target: {
+                    files: dataTransfer.files
+                }
+            } as unknown as React.ChangeEvent<HTMLInputElement>;
+
+            handleFileSelect(event);
+            stopCamera();
+        }, 'image/jpeg');
+    };
+
+    // Clean up stream on unmount
+    useEffect(() => {
+        return () => {
+            if (streamRef.current) {
+                streamRef.current.getTracks().forEach(track => track.stop());
+            }
+        };
+    }, []);
+
     const handleRemove = () => {
         onChange("");
         setPreview(null);
@@ -133,29 +211,57 @@ export function ImageUpload({ value, onChange }: ImageUploadProps) {
     }
 
     return (
-        <div 
-            className="flex flex-col items-center justify-center w-full h-48 border border-dashed rounded-md bg-muted/10 hover:bg-muted/20 transition-colors cursor-pointer"
-            onClick={() => fileInputRef.current?.click()}
-        >
-            <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleFileSelect}
-                className="hidden"
-            />
-            {isUploading ? (
-                <>
-                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground mt-2">Uploading...</p>
-                </>
-            ) : (
-                <>
-                    <Upload className="h-8 w-8 text-muted-foreground" />
-                    <p className="text-sm font-medium mt-2">Choose File</p>
-                    <p className="text-xs text-muted-foreground mt-1">Image (4MB)</p>
-                </>
-            )}
+        <div className="flex gap-4 items-start">
+            <div
+                className="flex flex-col items-center justify-center w-full h-48 border border-dashed rounded-md bg-muted/10 hover:bg-muted/20 transition-colors cursor-pointer"
+                onClick={() => fileInputRef.current?.click()}
+            >
+                <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                />
+                {isUploading ? (
+                    <>
+                        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                        <p className="text-sm text-muted-foreground mt-2">Uploading...</p>
+                    </>
+                ) : (
+                    <>
+                        <Upload className="h-8 w-8 text-muted-foreground" />
+                        <p className="text-sm font-medium mt-2">Choose File</p>
+                        <p className="text-xs text-muted-foreground mt-1">Image (4MB)</p>
+                    </>
+                )}
+            </div>
+
+            <Dialog open={isCameraOpen} onOpenChange={(open) => {
+                setIsCameraOpen(open);
+                if (open) startCamera();
+                else stopCamera();
+            }}>
+                <DialogTrigger asChild>
+                    <Button variant="outline" className="h-48 flex flex-col gap-2 px-8" type="button">
+                        <Camera className="h-8 w-8 text-muted-foreground" />
+                        Capture
+                    </Button>
+                </DialogTrigger>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Take Photo</DialogTitle>
+                    </DialogHeader>
+                    <div className="relative aspect-video bg-muted rounded-md overflow-hidden">
+                        <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+                        <canvas ref={canvasRef} className="hidden" />
+                    </div>
+                    <div className="flex justify-end gap-2">
+                        <Button variant="outline" onClick={() => setIsCameraOpen(false)}>Cancel</Button>
+                        <Button onClick={captureImage}>Capture & Upload</Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }

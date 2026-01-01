@@ -23,23 +23,27 @@ const mobileOnlyItems = [
     { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
 ]
 
-export function DesktopNav() {
+export function SidebarNav() {
     return (
-        <nav className="hidden md:flex md:items-center md:gap-2 lg:gap-3 xl:gap-4">
-            <Link
-                href="/dashboard"
-                className="flex items-center gap-2 text-lg font-semibold mr-4"
-            >
-                <BookOpen className="h-6 w-6 text-primary" />
-                <span className="hidden lg:inline font-serif">BookKeeper</span>
-            </Link>
+        <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
             {navItems.map((item) => (
                 <NavLink
                     key={item.href}
                     href={item.href}
                     icon={item.icon}
                     exact={item.exact}
-                    className="px-3 py-2 rounded-md hover:bg-muted"
+                    className="flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:text-primary"
+                >
+                    {item.label}
+                </NavLink>
+            ))}
+            <div className="my-4 border-t" />
+            {mobileOnlyItems.map((item) => (
+                <NavLink
+                    key={item.href}
+                    href={item.href}
+                    icon={item.icon}
+                    className="flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:text-primary"
                 >
                     {item.label}
                 </NavLink>
@@ -63,14 +67,14 @@ export function MobileNav() {
                     <span className="sr-only">Toggle navigation menu</span>
                 </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-72">
+            <SheetContent side="left" className="flex flex-col">
                 <SheetHeader className="text-left">
                     <SheetTitle className="flex items-center gap-2">
                         <BookOpen className="h-6 w-6 text-primary" />
                         <span className="font-serif">BookKeeper</span>
                     </SheetTitle>
                 </SheetHeader>
-                <nav className="mt-6 flex flex-col gap-1">
+                <nav className="grid gap-2 text-lg font-medium mt-4">
                     {navItems.map((item) => (
                         <NavLink
                             key={item.href}
@@ -78,18 +82,21 @@ export function MobileNav() {
                             icon={item.icon}
                             exact={item.exact}
                             variant="mobile"
-                            className=""
+                            className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 hover:text-foreground"
+                            onClick={() => setOpen(false)}
                         >
                             {item.label}
                         </NavLink>
                     ))}
-                    <div className="my-4 border-t" />
+                    <div className="my-2 border-t" />
                     {mobileOnlyItems.map((item) => (
                         <NavLink
                             key={item.href}
                             href={item.href}
                             icon={item.icon}
                             variant="mobile"
+                            className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 hover:text-foreground"
+                            onClick={() => setOpen(false)}
                         >
                             {item.label}
                         </NavLink>

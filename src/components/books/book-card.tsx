@@ -94,17 +94,17 @@ export function BookCard({ book }: BookCardProps) {
                         )}
                     </div>
                 </Link>
-                <CardHeader className="p-3 pb-2">
-                    <div className="flex items-start justify-between gap-2">
+                <CardHeader className="p-2">
+                    <div className="flex items-start justify-between gap-1">
                         <div className="grid gap-0.5 min-w-0 flex-1">
-                            <CardTitle className="line-clamp-1 text-sm" title={book.title}>{book.title}</CardTitle>
+                            <CardTitle className="line-clamp-1 text-sm font-medium leading-none" title={book.title}>{book.title}</CardTitle>
                             <CardDescription className="line-clamp-1 text-xs" title={book.author}>{book.author}</CardDescription>
                         </div>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                <Button variant="ghost" className="h-6 w-6 p-0">
                                     <span className="sr-only">Open menu</span>
-                                    <MoreHorizontal className="h-4 w-4" />
+                                    <MoreHorizontal className="h-3 w-3" />
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
@@ -144,29 +144,29 @@ export function BookCard({ book }: BookCardProps) {
                         </DropdownMenu>
                     </div>
                 </CardHeader>
-                <CardContent className="p-3 pt-0 flex-1">
-                    <div className="flex flex-col gap-2">
-                        <div className="flex items-center text-xs text-muted-foreground">
-                            <BookIcon className="mr-1.5 h-3 w-3" />
+                <CardContent className="p-2 pt-0 flex-1">
+                    <div className="flex flex-col gap-1.5">
+                        <div className="flex items-center text-[10px] text-muted-foreground">
+                            <BookIcon className="mr-1 h-3 w-3" />
                             {book.format}
                         </div>
                         {book.ownership_status === "borrowed_from_others" && book.borrowed_info?.owner_name && (
-                            <div className="flex items-center text-xs text-blue-600 font-medium">
-                                <User className="mr-1.5 h-3 w-3" />
+                            <div className="flex items-center text-[10px] text-blue-600 font-medium">
+                                <User className="mr-1 h-3 w-3" />
                                 From: {book.borrowed_info.owner_name}
                             </div>
                         )}
                         {book.ownership_status === "wishlist" && book.purchase_info?.link && (
-                            <Button asChild size="sm" variant="outline" className="w-full h-7 text-xs">
+                            <Button asChild size="sm" variant="outline" className="w-full h-6 text-[10px] px-2">
                                 <a href={book.purchase_info.link} target="_blank" rel="noopener noreferrer">
                                     Buy Online
                                 </a>
                             </Button>
                         )}
                     </div>
-                    <div className="mt-2 flex flex-wrap gap-1">
-                        <Badge variant="outline" className="text-xs">{book.ownership_status.replace(/_/g, " ")}</Badge>
-                        <Badge variant="secondary" className="text-xs">{book.reading_status.replace(/_/g, " ")}</Badge>
+                    <div className="mt-1.5 flex flex-wrap gap-1">
+                        <Badge variant="outline" className="text-[10px] h-5 px-1">{book.ownership_status.replace(/_/g, " ")}</Badge>
+                        <Badge variant="secondary" className="text-[10px] h-5 px-1">{book.reading_status.replace(/_/g, " ")}</Badge>
                     </div>
                 </CardContent>
             </Card>
