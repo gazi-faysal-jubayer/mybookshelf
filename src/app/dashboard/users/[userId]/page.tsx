@@ -61,6 +61,7 @@ async function ProfileContainer({
                 userId={userId}
                 profile={profile}
                 isOwnProfile={isOwnProfile}
+                currentUserId={currentUserId}
             />
         </>
     )

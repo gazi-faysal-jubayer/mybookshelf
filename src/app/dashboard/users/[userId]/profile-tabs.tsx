@@ -6,7 +6,8 @@ import { UserBooksTab } from "./tabs/user-books-tab"
 import { UserActivityTab } from "./tabs/user-activity-tab"
 import { UserReviewsTab } from "./tabs/user-reviews-tab"
 import { UserConnectionsTab } from "./tabs/user-connections-tab"
-import { BookOpen, Activity, Star, Users } from "lucide-react"
+import { UserPostsTab } from "./tabs/user-posts-tab"
+import { BookOpen, Activity, Star, Users, MessageSquare } from "lucide-react"
 
 interface Profile {
     id: string
@@ -21,10 +22,11 @@ interface ProfileTabsProps {
     userId: string
     profile: Profile
     isOwnProfile: boolean
+    currentUserId: string
 }
 
-export function ProfileTabs({ userId, profile, isOwnProfile }: ProfileTabsProps) {
-    const [activeTab, setActiveTab] = useState("books")
+export function ProfileTabs({ userId, profile, isOwnProfile, currentUserId }: ProfileTabsProps) {
+    const [activeTab, setActiveTab] = useState("posts")
 
     // Check privacy settings
     const showActivity = isOwnProfile || profile.show_reading_activity !== false
@@ -33,6 +35,10 @@ export function ProfileTabs({ userId, profile, isOwnProfile }: ProfileTabsProps)
     return (
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="w-full justify-start overflow-x-auto">
+                <TabsTrigger value="posts" className="gap-2">
+                    <MessageSquare className="h-4 w-4" />
+                    <span className="hidden sm:inline">Posts</span>
+                </TabsTrigger>
                 {showBooks && (
                     <TabsTrigger value="books" className="gap-2">
                         <BookOpen className="h-4 w-4" />
@@ -54,6 +60,10 @@ export function ProfileTabs({ userId, profile, isOwnProfile }: ProfileTabsProps)
                     <span className="hidden sm:inline">Connections</span>
                 </TabsTrigger>
             </TabsList>
+
+            <TabsContent value="posts" className="mt-6">
+                <UserPostsTab userId={userId} currentUserId={currentUserId} isOwnProfile={isOwnProfile} />
+            </TabsContent>
 
             {showBooks && (
                 <TabsContent value="books" className="mt-6">

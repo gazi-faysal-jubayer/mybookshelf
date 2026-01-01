@@ -195,12 +195,7 @@ export async function getFeed(mode: 'global' | 'connections', cursor?: string, l
                 created_at,
                 updated_at,
                 book_id,
-                user:profiles!posts_user_id_fkey(
-                    id,
-                    full_name,
-                    username,
-                    profile_picture
-                ),
+                user_id,
                 book:books!posts_book_id_fkey(
                     id,
                     title,
@@ -257,23 +252,56 @@ export async function getFeed(mode: 'global' | 'connections', cursor?: string, l
             ? resultPosts[resultPosts.length - 1].created_at
             : undefined
 
+        // Get user IDs from posts and fetch profiles separately
+        const userIds = [...new Set(resultPosts.map((p: any) => p.user_id))]
+        const { data: profiles } = await supabase
+            .from('profiles')
+            .select('id, full_name, username, profile_picture')
+            .in('id', userIds)
+
+        const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]))
+
         // Check if user liked each post
         const postIds = resultPosts.map((p: any) => p.id)
-        const { data: userLikes } = await supabase
-            .from('post_likes')
-            .select('post_id')
-            .eq('user_id', user.id)
-            .in('post_id', postIds)
+        const [likesResult, bookmarksResult, repostsResult] = await Promise.all([
+            postIds.length > 0 ? supabase
+                .from('post_likes')
+                .select('post_id')
+                .eq('user_id', user.id)
+                .in('post_id', postIds) : { data: [] },
+            postIds.length > 0 ? supabase
+                .from('post_bookmarks')
+                .select('post_id')
+                .eq('user_id', user.id)
+                .in('post_id', postIds) : { data: [] },
+            postIds.length > 0 ? supabase
+                .from('post_reposts')
+                .select('original_post_id')
+                .eq('user_id', user.id)
+                .in('original_post_id', postIds) : { data: [] },
+        ])
 
-        const likedPostIds = new Set((userLikes || []).map((l: any) => l.post_id))
+        const likedPostIds = new Set((likesResult.data || []).map((l: any) => l.post_id))
+        const bookmarkedPostIds = new Set((bookmarksResult.data || []).map((b: any) => b.post_id))
+        const repostedPostIds = new Set((repostsResult.data || []).map((r: any) => r.original_post_id))
 
-        // Transform posts
-        const transformedPosts = resultPosts.map((post: any) => ({
-            ...post,
-            likeCount: post.likes?.[0]?.count || 0,
-            commentCount: post.comments?.[0]?.count || 0,
-            isLiked: likedPostIds.has(post.id),
-        }))
+        // Transform posts with profile data
+        const transformedPosts = resultPosts
+            .map((post: any) => {
+                const profile = profileMap.get(post.user_id)
+                // Skip posts from users without profiles
+                if (!profile) return null
+                return {
+                    ...post,
+                    user: profile,
+                    likeCount: post.likes?.[0]?.count || 0,
+                    commentCount: post.comments?.[0]?.count || 0,
+                    isLiked: likedPostIds.has(post.id),
+                    isBookmarked: bookmarkedPostIds.has(post.id),
+                    isReposted: repostedPostIds.has(post.id),
+                }
+            })
+            .filter(Boolean)
 
         return { posts: transformedPosts, nextCursor }
     } catch (error) {
@@ -295,12 +323,7 @@ export async function getPostComments(postId: string) {
                 id,
                 content,
                 created_at,
-                user:profiles!post_comments_user_id_fkey(
-                    id,
-                    full_name,
-                    username,
-                    profile_picture
-                )
+                user_id
             `)
             .eq('post_id', postId)
             .order('created_at', { ascending: true })
@@ -310,15 +333,361 @@ export async function getPostComments(postId: string) {
             return []
         }
 
-        // Transform to ensure user is a single object (not array)
-        return (comments || []).map((item: any) => ({
-            id: item.id,
-            content: item.content,
-            created_at: item.created_at,
-            user: Array.isArray(item.user) ? item.user[0] : item.user,
-        }))
+        // Fetch profiles separately
+        const userIds = [...new Set((comments || []).map((c: any) => c.user_id))]
+        const { data: profiles } = await supabase
+            .from('profiles')
+            .select('id, full_name, username, profile_picture')
+            .in('id', userIds)
+
+        const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]))
+
+        // Transform to include user data and current user info
+        const transformed = (comments || []).map((item: any) => {
+            const profile = profileMap.get(item.user_id)
+            if (!profile) return null
+            return {
+                id: item.id,
+                content: item.content,
+                created_at: item.created_at,
+                user: profile,
+                isOwn: item.user_id === user.id,
+            }
+        })
+
+        // Filter out nulls with a type guard so TS knows the array contains only Comment objects
+        return transformed.filter((c): c is { id: string; content: string; created_at: string; user: any; isOwn: boolean } => Boolean(c))
     } catch (error) {
         console.error("Failed to get comments:", error)
         return []
+    }
+}
+
+export async function getUserPosts(userId: string, cursor?: string, limit: number = 20) {
+    try {
+        const currentUser = await getUser()
+        if (!currentUser) return { posts: [], nextCursor: undefined }
+
+        const supabase = await createClient()
+
+        // Get the user's profile
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('id, full_name, username, profile_picture')
+            .eq('id', userId)
+            .single()
+
+        if (!profile) {
+            return { posts: [], nextCursor: undefined }
+        }
+
+        // Determine visibility filter based on relationship
+        const isOwnProfile = currentUser.id === userId
+        
+        let visibilityFilter = ['public'] // Default to public only
+        
+        if (isOwnProfile) {
+            // User can see all their own posts
+            visibilityFilter = ['public', 'connections', 'private']
+        } else {
+            // Check if they're friends
+            const { data: friendship } = await supabase
+                .from('friendships')
+                .select('id')
+                .eq('status', 'accepted')
+                .or(`and(requester_id.eq.${currentUser.id},addressee_id.eq.${userId}),and(requester_id.eq.${userId},addressee_id.eq.${currentUser.id})`)
+                .single()
+
+            if (friendship) {
+                visibilityFilter = ['public', 'connections']
+            }
+        }
+
+        let query = supabase
+            .from('posts')
+            .select(`
+                id,
+                content,
+                visibility,
+                created_at,
+                updated_at,
+                book_id,
+                user_id,
+                book:books!posts_book_id_fkey(
+                    id,
+                    title,
+                    author,
+                    cover_image
+                ),
+                likes:post_likes(count),
+                comments:post_comments(count)
+            `)
+            .eq('user_id', userId)
+            .in('visibility', visibilityFilter)
+            .order('created_at', { ascending: false })
+            .limit(limit + 1)
+
+        if (cursor) {
+            query = query.lt('created_at', cursor)
+        }
+
+        const { data: posts, error } = await query
+
+        if (error) {
+            console.error("Supabase error:", error)
+            return { posts: [], nextCursor: undefined }
+        }
+
+        const hasMore = posts && posts.length > limit
+        const resultPosts = hasMore ? posts.slice(0, limit) : (posts || [])
+        const nextCursor = hasMore && resultPosts.length > 0
+            ? resultPosts[resultPosts.length - 1].created_at
+            : undefined
+
+        // Check if current user liked/bookmarked/reposted each post
+        const postIds = resultPosts.map((p: any) => p.id)
+        const [likesResult, bookmarksResult, repostsResult] = await Promise.all([
+            postIds.length > 0 ? supabase
+                .from('post_likes')
+                .select('post_id')
+                .eq('user_id', currentUser.id)
+                .in('post_id', postIds) : { data: [] },
+            postIds.length > 0 ? supabase
+                .from('post_bookmarks')
+                .select('post_id')
+                .eq('user_id', currentUser.id)
+                .in('post_id', postIds) : { data: [] },
+            postIds.length > 0 ? supabase
+                .from('post_reposts')
+                .select('original_post_id')
+                .eq('user_id', currentUser.id)
+                .in('original_post_id', postIds) : { data: [] },
+        ])
+
+        const likedPostIds = new Set((likesResult.data || []).map((l: any) => l.post_id))
+        const bookmarkedPostIds = new Set((bookmarksResult.data || []).map((b: any) => b.post_id))
+        const repostedPostIds = new Set((repostsResult.data || []).map((r: any) => r.original_post_id))
+
+        // Transform posts
+        const transformedPosts = resultPosts.map((post: any) => ({
+            ...post,
+            user: profile,
+            likeCount: post.likes?.[0]?.count || 0,
+            commentCount: post.comments?.[0]?.count || 0,
+            isLiked: likedPostIds.has(post.id),
+            isBookmarked: bookmarkedPostIds.has(post.id),
+            isReposted: repostedPostIds.has(post.id),
+        }))
+
+        return { posts: transformedPosts, nextCursor }
+    } catch (error) {
+        console.error("Failed to get user posts:", error)
+        return { posts: [], nextCursor: undefined }
+    }
+}
+
+export async function bookmarkPost(postId: string) {
+    try {
+        const user = await getUser()
+        if (!user) throw new Error("Unauthorized")
+
+        const supabase = await createClient()
+
+        const { error } = await supabase
+            .from('post_bookmarks')
+            .insert({
+                post_id: postId,
+                user_id: user.id,
+            })
+
+        if (error) {
+            if (error.code === '23505') {
+                return { success: true, alreadyBookmarked: true }
+            }
+            console.error("Supabase error:", error)
+            throw new Error("Failed to bookmark post")
+        }
+
+        return { success: true }
+    } catch (error) {
+        console.error("Failed to bookmark post:", error)
+        throw error
+    }
+}
+
+export async function unbookmarkPost(postId: string) {
+    try {
+        const user = await getUser()
+        if (!user) throw new Error("Unauthorized")
+
+        const supabase = await createClient()
+
+        const { error } = await supabase
+            .from('post_bookmarks')
+            .delete()
+            .eq('post_id', postId)
+            .eq('user_id', user.id)
+
+        if (error) {
+            console.error("Supabase error:", error)
+            throw new Error("Failed to remove bookmark")
+        }
+
+        return { success: true }
+    } catch (error) {
+        console.error("Failed to remove bookmark:", error)
+        throw error
+    }
+}
+
+export async function repostPost(postId: string, quote?: string) {
+    try {
+        const user = await getUser()
+        if (!user) throw new Error("Unauthorized")
+
+        const supabase = await createClient()
+
+        const { error } = await supabase
+            .from('post_reposts')
+            .insert({
+                original_post_id: postId,
+                user_id: user.id,
+                quote: quote?.trim() || null,
+            })
+
+        if (error) {
+            if (error.code === '23505') {
+                return { success: false, error: "You've already reposted this" }
+            }
+            console.error("Supabase error:", error)
+            throw new Error("Failed to repost")
+        }
+
+        revalidatePath("/dashboard/feed")
+        return { success: true }
+    } catch (error) {
+        console.error("Failed to repost:", error)
+        throw error
+    }
+}
+
+export async function unrepost(postId: string) {
+    try {
+        const user = await getUser()
+        if (!user) throw new Error("Unauthorized")
+
+        const supabase = await createClient()
+
+        const { error } = await supabase
+            .from('post_reposts')
+            .delete()
+            .eq('original_post_id', postId)
+            .eq('user_id', user.id)
+
+        if (error) {
+            console.error("Supabase error:", error)
+            throw new Error("Failed to remove repost")
+        }
+
+        revalidatePath("/dashboard/feed")
+        return { success: true }
+    } catch (error) {
+        console.error("Failed to remove repost:", error)
+        throw error
+    }
+}
+
+export async function getBookmarkedPosts(cursor?: string, limit: number = 20) {
+    try {
+        const user = await getUser()
+        if (!user) return { posts: [], nextCursor: undefined }
+
+        const supabase = await createClient()
+
+        let query = supabase
+            .from('post_bookmarks')
+            .select(`
+                id,
+                created_at,
+                post:posts!post_bookmarks_post_id_fkey(
+                    id,
+                    content,
+                    visibility,
+                    created_at,
+                    updated_at,
+                    book_id,
+                    user_id,
+                    book:books!posts_book_id_fkey(
+                        id,
+                        title,
+                        author,
+                        cover_image
+                    ),
+                    likes:post_likes(count),
+                    comments:post_comments(count)
+                )
+            `)
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false })
+            .limit(limit + 1)
+
+        if (cursor) {
+            query = query.lt('created_at', cursor)
+        }
+
+        const { data: bookmarks, error } = await query
+
+        if (error) {
+            console.error("Supabase error:", error)
+            return { posts: [], nextCursor: undefined }
+        }
+
+        const hasMore = bookmarks && bookmarks.length > limit
+        const resultBookmarks = hasMore ? bookmarks.slice(0, limit) : (bookmarks || [])
+        const nextCursor = hasMore && resultBookmarks.length > 0
+            ? resultBookmarks[resultBookmarks.length - 1].created_at
+            : undefined
+
+        // Get all user IDs and fetch profiles
+        const userIds = [...new Set(resultBookmarks.map((b: any) => b.post?.user_id).filter(Boolean))]
+        const { data: profiles } = await supabase
+            .from('profiles')
+            .select('id, full_name, username, profile_picture')
+            .in('id', userIds)
+
+        const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]))
+
+        // Get liked posts
+        const postIds = resultBookmarks.map((b: any) => b.post?.id).filter(Boolean)
+        const { data: userLikes } = postIds.length > 0 ? await supabase
+            .from('post_likes')
+            .select('post_id')
+            .eq('user_id', user.id)
+            .in('post_id', postIds) : { data: [] }
+
+        const likedPostIds = new Set((userLikes || []).map((l: any) => l.post_id))
+
+        // Transform posts
+        const transformedPosts = resultBookmarks
+            .map((bookmark: any) => {
+                const post = bookmark.post
+                if (!post) return null
+                const profile = profileMap.get(post.user_id)
+                if (!profile) return null
+                return {
+                    ...post,
+                    user: profile,
+                    likeCount: post.likes?.[0]?.count || 0,
+                    commentCount: post.comments?.[0]?.count || 0,
+                    isLiked: likedPostIds.has(post.id),
+                    isBookmarked: true,
+                }
+            })
+            .filter(Boolean)
+
+        return { posts: transformedPosts, nextCursor }
+    } catch (error) {
+        console.error("Failed to get bookmarked posts:", error)
+        return { posts: [], nextCursor: undefined }
     }
 }

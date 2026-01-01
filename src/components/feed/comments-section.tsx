@@ -14,6 +14,7 @@ interface Comment {
     id: string
     content: string
     created_at: string
+    isOwn: boolean
     user: {
         id: string
         full_name?: string
@@ -139,14 +140,16 @@ function CommentItem({
                         <Link href={`/dashboard/users/${comment.user.id}`} className="font-medium text-sm hover:underline">
                             {comment.user.full_name || comment.user.username}
                         </Link>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                            onClick={() => onDelete(comment.id)}
-                        >
-                            <Trash2 className="h-3 w-3" />
-                        </Button>
+                        {comment.isOwn && (
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                onClick={() => onDelete(comment.id)}
+                            >
+                                <Trash2 className="h-3 w-3" />
+                            </Button>
+                        )}
                     </div>
                     <p className="text-sm">{comment.content}</p>
                 </div>

@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { BookOpen, Compass, MessageSquare, Library, Heart, BarChart3, Book, Menu, Newspaper, Users } from "lucide-react"
+import { BookOpen, Compass, MessageSquare, Library, Heart, BarChart3, Book, Menu, Newspaper, Users, Bookmark } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { NavLink } from "./nav-link"
@@ -14,6 +14,7 @@ const navItems = [
     { href: "/dashboard/books", label: "My Books", icon: Book },
     { href: "/dashboard/connections", label: "Connections", icon: Users },
     { href: "/dashboard/messages", label: "Messages", icon: MessageSquare },
+    { href: "/dashboard/bookmarks", label: "Bookmarks", icon: Bookmark },
 ]
 
 const mobileOnlyItems = [
