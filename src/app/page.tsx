@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { BookOpen, Library, Users, Heart, ArrowRight, Star, BookMarked, Sparkles, Menu, X } from "lucide-react";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 
@@ -29,6 +30,7 @@ export default function Home() {
                         </div>
 
                         <div className="flex items-center gap-4">
+                            <ThemeToggle />
                             {/* Desktop Auth Buttons */}
                             <Link
                                 href="/login"
@@ -79,6 +81,11 @@ export default function Home() {
                                                 Get Started
                                             </Link>
                                         </SheetClose>
+                                        <div className="border-t border-border my-4" />
+                                        <div className="flex items-center justify-between px-4">
+                                            <span className="text-sm text-muted-foreground">Theme</span>
+                                            <ThemeToggle />
+                                        </div>
                                     </nav>
                                 </SheetContent>
                             </Sheet>

@@ -16,6 +16,7 @@ import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import { GlobalSearch } from "@/components/search/global-search"
 import { NotificationBell } from "@/components/notifications/notification-bell"
+import { ThemeToggle } from "@/components/ui/theme-toggle"
 
 async function signOut() {
     "use server"
@@ -147,6 +148,7 @@ export default async function DashboardLayout({
                 <div className="flex w-full items-center gap-4 md:ml-auto md:gap-2 lg:gap-4">
                     <GlobalSearch />
                     <NotificationBell />
+                    <ThemeToggle />
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="secondary" size="icon" className="rounded-full">

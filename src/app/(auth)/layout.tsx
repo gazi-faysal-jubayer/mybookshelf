@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { BookOpen } from "lucide-react";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 export default function AuthLayout({
     children,
@@ -9,11 +10,12 @@ export default function AuthLayout({
     return (
         <div className="min-h-screen hero-pattern flex flex-col">
             {/* Simple nav */}
-            <nav className="p-4">
+            <nav className="p-4 flex items-center justify-between">
                 <Link href="/" className="inline-flex items-center gap-2 text-foreground hover:text-primary transition-colors">
                     <BookOpen className="h-6 w-6 text-primary" />
                     <span className="font-semibold">MyBookshelf</span>
                 </Link>
+                <ThemeToggle />
             </nav>
 
             {/* Auth content */}

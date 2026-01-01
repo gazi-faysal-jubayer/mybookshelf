@@ -7,8 +7,10 @@
 @layer base {
   :root {
     /* Warm & Cozy Theme - Cream, Brown, Terracotta */
-    --background: 40 33% 97%; /* Warm cream #FAF8F5 */
-    --foreground: 24 10% 20%; /* Dark brown text */
+    --background: 40 33% 97%;
+    /* Warm cream #FAF8F5 */
+    --foreground: 24 10% 20%;
+    /* Dark brown text */
 
     --card: 40 30% 98%;
     --card-foreground: 24 10% 20%;
@@ -16,16 +18,19 @@
     --popover: 40 30% 98%;
     --popover-foreground: 24 10% 20%;
 
-    --primary: 16 50% 45%; /* Terracotta #B85C38 */
+    --primary: 16 50% 45%;
+    /* Terracotta #B85C38 */
     --primary-foreground: 40 33% 97%;
 
-    --secondary: 35 30% 90%; /* Light tan */
+    --secondary: 35 30% 90%;
+    /* Light tan */
     --secondary-foreground: 24 10% 20%;
 
     --muted: 35 20% 93%;
     --muted-foreground: 24 10% 45%;
 
-    --accent: 28 60% 55%; /* Warm amber */
+    --accent: 28 60% 55%;
+    /* Warm amber */
     --accent-foreground: 40 33% 97%;
 
     --destructive: 0 72% 51%;
@@ -50,7 +55,8 @@
 
   .dark {
     /* Dark mode - Cozy Evening */
-    --background: 24 20% 10%; /* Deep warm brown */
+    --background: 24 20% 10%;
+    /* Deep warm brown */
     --foreground: 40 25% 90%;
 
     --card: 24 18% 14%;
@@ -59,7 +65,8 @@
     --popover: 24 18% 14%;
     --popover-foreground: 40 25% 90%;
 
-    --primary: 16 55% 55%; /* Lighter terracotta for dark mode */
+    --primary: 16 55% 55%;
+    /* Lighter terracotta for dark mode */
     --primary-foreground: 24 20% 10%;
 
     --secondary: 24 15% 20%;
@@ -84,16 +91,24 @@
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
     font-family: 'Source Sans 3', system-ui, sans-serif;
   }
-  h1, h2, h3, h4, h5, h6 {
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-family: 'Playfair Display', Georgia, serif;
   }
 }
 
 @layer components {
+
   /* Warm paper texture effect */
   .paper-texture {
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
@@ -105,42 +120,50 @@
   .cozy-card {
     @apply bg-card rounded-xl shadow-lg border border-border/50;
     box-shadow: 0 4px 20px -4px rgba(139, 90, 43, 0.1),
-                0 8px 40px -8px rgba(139, 90, 43, 0.05);
+      0 8px 40px -8px rgba(139, 90, 43, 0.05);
   }
 
   /* Warm gradient backgrounds */
   .warm-gradient {
-    background: linear-gradient(135deg, 
-      hsl(var(--warm-cream)) 0%, 
-      hsl(var(--warm-beige)) 50%,
-      hsl(var(--warm-tan)) 100%
-    );
+    background: linear-gradient(135deg,
+        hsl(var(--warm-cream)) 0%,
+        hsl(var(--warm-beige)) 50%,
+        hsl(var(--warm-tan)) 100%);
   }
 
   .terracotta-gradient {
-    background: linear-gradient(135deg, 
-      hsl(var(--terracotta)) 0%, 
-      hsl(var(--terracotta-dark)) 100%
-    );
+    background: linear-gradient(135deg,
+        hsl(var(--terracotta)) 0%,
+        hsl(var(--terracotta-dark)) 100%);
   }
 
   /* Hero pattern */
   .hero-pattern {
-    background-color: hsl(var(--warm-cream));
-    background-image: 
+    background-color: hsl(var(--background));
+    background-image:
       radial-gradient(at 20% 30%, hsla(28, 60%, 55%, 0.1) 0px, transparent 50%),
       radial-gradient(at 80% 70%, hsla(16, 50%, 45%, 0.08) 0px, transparent 50%),
       radial-gradient(at 50% 50%, hsla(35, 30%, 90%, 0.5) 0px, transparent 70%);
+  }
+
+  .dark .hero-pattern {
+    background-color: hsl(var(--background));
+    background-image:
+      radial-gradient(at 20% 30%, hsla(28, 60%, 55%, 0.15) 0px, transparent 50%),
+      radial-gradient(at 80% 70%, hsla(16, 50%, 45%, 0.12) 0px, transparent 50%),
+      radial-gradient(at 50% 50%, hsla(24, 15%, 20%, 0.5) 0px, transparent 70%);
   }
 
   /* Animated underline for links */
   .link-underline {
     @apply relative;
   }
+
   .link-underline::after {
     content: '';
     @apply absolute bottom-0 left-0 w-0 h-0.5 bg-primary transition-all duration-300;
   }
+
   .link-underline:hover::after {
     @apply w-full;
   }
@@ -160,32 +183,60 @@
 
   /* Floating animation */
   @keyframes float {
-    0%, 100% { transform: translateY(0px); }
-    50% { transform: translateY(-10px); }
+
+    0%,
+    100% {
+      transform: translateY(0px);
+    }
+
+    50% {
+      transform: translateY(-10px);
+    }
   }
+
   .animate-float {
     animation: float 4s ease-in-out infinite;
   }
 
   /* Fade in animation */
   @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
+
   .animate-fade-in {
     animation: fadeIn 0.6s ease-out forwards;
   }
 
   /* Stagger animations */
-  .stagger-1 { animation-delay: 0.1s; }
-  .stagger-2 { animation-delay: 0.2s; }
-  .stagger-3 { animation-delay: 0.3s; }
-  .stagger-4 { animation-delay: 0.4s; }
+  .stagger-1 {
+    animation-delay: 0.1s;
+  }
+
+  .stagger-2 {
+    animation-delay: 0.2s;
+  }
+
+  .stagger-3 {
+    animation-delay: 0.3s;
+  }
+
+  .stagger-4 {
+    animation-delay: 0.4s;
+  }
 
   /* Book card hover effect */
   .book-card-hover {
     @apply transition-all duration-300;
   }
+
   .book-card-hover:hover {
     @apply -translate-y-2 shadow-xl;
     box-shadow: 0 20px 40px -12px rgba(139, 90, 43, 0.25);
@@ -214,4 +265,17 @@
 
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--terracotta) / 0.6);
+}
+
+/* Dark mode scrollbar */
+.dark::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+}
+
+.dark::-webkit-scrollbar-thumb {
+  background: hsl(var(--primary) / 0.4);
+}
+
+.dark::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary) / 0.6);
 }
