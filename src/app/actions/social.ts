@@ -446,7 +446,7 @@ export async function getUserProfile(userId: string) {
         badges: badges?.map(b => b.badge) || [],
         recentBooks: recentBooks || [],
         isOwnProfile,
-        isFollowing,
+        isFollowing: isFriend || isFollowing,
         isFriend,
         friendshipStatus
     }

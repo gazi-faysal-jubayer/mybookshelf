@@ -112,12 +112,7 @@ function FriendsTab({ friends }: { friends: any[] }) {
                 <ConnectionCard
                     key={friend.id}
                     user={friend}
-                    connectionStatus={{
-                        isFriend: true,
-                        isPending: false,
-                        isRequested: false,
-                        isFollowing: false, // Would need to check
-                    }}
+                    connectionStatus={friend.connectionStatus}
                 />
             ))}
         </div>
@@ -141,12 +136,7 @@ function FollowingTab({ following }: { following: any[] }) {
                 <ConnectionCard
                     key={user.id}
                     user={user}
-                    connectionStatus={{
-                        isFriend: false,
-                        isPending: false,
-                        isRequested: false,
-                        isFollowing: true,
-                    }}
+                    connectionStatus={user.connectionStatus}
                 />
             ))}
         </div>
@@ -194,12 +184,7 @@ function SuggestionsTab({ suggestions }: { suggestions: any[] }) {
                 <ConnectionCard
                     key={user.id}
                     user={user}
-                    connectionStatus={{
-                        isFriend: false,
-                        isPending: false,
-                        isRequested: false,
-                        isFollowing: false,
-                    }}
+                    connectionStatus={user.connectionStatus}
                 />
             ))}
         </div>

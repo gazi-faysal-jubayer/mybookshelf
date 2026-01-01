@@ -108,6 +108,18 @@ export async function acceptFriendRequest(friendshipId: string) {
             throw new Error("Failed to accept friend request")
         }
 
+        // Add mutual follows when becoming friends
+        await Promise.all([
+            supabase.from('follows').upsert({
+                follower_id: user.id,
+                following_id: friendship.requester_id
+            }, { onConflict: 'follower_id,following_id' }),
+            supabase.from('follows').upsert({
+                follower_id: friendship.requester_id,
+                following_id: user.id
+            }, { onConflict: 'follower_id,following_id' })
+        ])
+
         // Notify the requester that their request was accepted
         await createNotification(
             friendship.requester_id,
@@ -341,14 +353,35 @@ export async function getFriends() {
             return []
         }
 
-        // Transform to get the friend (not the current user)
+        // Fetch all current user's relationship IDs to optimize
+        const [
+            { data: myFollows },
+            { data: myFriendships }
+        ] = await Promise.all([
+            supabase.from('follows').select('following_id').eq('follower_id', user.id),
+            supabase.from('friendships').select('requester_id, addressee_id, status').or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
+        ])
+
+        const followingIds = new Set(myFollows?.map(f => f.following_id) || [])
+        const friendIds = new Set(myFriendships?.filter(f => f.status === 'accepted').map(f => f.requester_id === user.id ? f.addressee_id : f.requester_id) || [])
+        const pendingSentIds = new Set(myFriendships?.filter(f => f.status === 'pending' && f.requester_id === user.id).map(f => f.addressee_id) || [])
+        const pendingReceivedIds = new Set(myFriendships?.filter(f => f.status === 'pending' && f.addressee_id === user.id).map(f => f.requester_id) || [])
+
+        // Transform results
         return (data || []).map((friendship: any) => {
             const friend = friendship.requester_id === user.id
                 ? friendship.addressee
                 : friendship.requester
+
             return {
                 friendshipId: friendship.id,
                 ...friend,
+                connectionStatus: {
+                    isFriend: true,
+                    isFollowing: true, // Friends are followers by default
+                    isPending: false, // Friendship is accepted
+                    isRequested: false, // Friendship is accepted
+                }
             }
         })
     } catch (error) {
@@ -384,9 +417,29 @@ export async function getFollowing() {
             return []
         }
 
+        // Fetch relationship IDs for status determination
+        const [
+            { data: myFollows },
+            { data: myFriendships }
+        ] = await Promise.all([
+            supabase.from('follows').select('following_id').eq('follower_id', user.id),
+            supabase.from('friendships').select('requester_id, addressee_id, status').or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
+        ])
+
+        const followingIds = new Set(myFollows?.map(f => f.following_id) || [])
+        const friendIds = new Set(myFriendships?.filter(f => f.status === 'accepted').map(f => f.requester_id === user.id ? f.addressee_id : f.requester_id) || [])
+        const pendingSentIds = new Set(myFriendships?.filter(f => f.status === 'pending' && f.requester_id === user.id).map(f => f.addressee_id) || [])
+        const pendingReceivedIds = new Set(myFriendships?.filter(f => f.status === 'pending' && f.addressee_id === user.id).map(f => f.requester_id) || [])
+
         return (data || []).map((follow: any) => ({
             followId: follow.id,
             ...follow.following,
+            connectionStatus: {
+                isFriend: friendIds.has(follow.following.id),
+                isFollowing: true, // They are in the following list
+                isPending: pendingSentIds.has(follow.following.id),
+                isRequested: pendingReceivedIds.has(follow.following.id),
+            }
         }))
     } catch (error) {
         console.error("Failed to get following:", error)
@@ -421,9 +474,29 @@ export async function getFollowers() {
             return []
         }
 
+        // Fetch relationship IDs for status determination
+        const [
+            { data: myFollows },
+            { data: myFriendships }
+        ] = await Promise.all([
+            supabase.from('follows').select('following_id').eq('follower_id', user.id),
+            supabase.from('friendships').select('requester_id, addressee_id, status').or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
+        ])
+
+        const followingIds = new Set(myFollows?.map(f => f.following_id) || [])
+        const friendIds = new Set(myFriendships?.filter(f => f.status === 'accepted').map(f => f.requester_id === user.id ? f.addressee_id : f.requester_id) || [])
+        const pendingSentIds = new Set(myFriendships?.filter(f => f.status === 'pending' && f.requester_id === user.id).map(f => f.addressee_id) || [])
+        const pendingReceivedIds = new Set(myFriendships?.filter(f => f.status === 'pending' && f.addressee_id === user.id).map(f => f.requester_id) || [])
+
         return (data || []).map((follow: any) => ({
             followId: follow.id,
             ...follow.follower,
+            connectionStatus: {
+                isFriend: friendIds.has(follow.follower.id),
+                isFollowing: true, // Implied following for friends? Or just check followingIds
+                isPending: pendingSentIds.has(follow.follower.id),
+                isRequested: pendingReceivedIds.has(follow.follower.id),
+            }
         }))
     } catch (error) {
         console.error("Failed to get followers:", error)
@@ -456,7 +529,7 @@ export async function getConnectionStatus(userId: string) {
         const isFriend = friendship?.status === 'accepted'
         const isPending = friendship?.status === 'pending' && friendship?.requester_id === user.id
         const isRequested = friendship?.status === 'pending' && friendship?.addressee_id === user.id
-        const isFollowing = !!follow
+        const isFollowing = isFriend || !!follow
 
         return { isFriend, isFollowing, isPending, isRequested }
     } catch (error) {
@@ -498,7 +571,32 @@ export async function getConnectionSuggestions() {
             return []
         }
 
-        return data || []
+        // Fetch relationship IDs for status determination
+        const [
+            { data: myFollows },
+            { data: myFriendships }
+        ] = await Promise.all([
+            supabase.from('follows').select('following_id').eq('follower_id', user.id),
+            supabase.from('friendships').select('requester_id, addressee_id, status').or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
+        ])
+
+        const followingIds = new Set(myFollows?.map(f => f.following_id) || [])
+        const friendIds = new Set(myFriendships?.filter(f => f.status === 'accepted').map(f => f.requester_id === user.id ? f.addressee_id : f.requester_id) || [])
+        const pendingSentIds = new Set(myFriendships?.filter(f => f.status === 'pending' && f.requester_id === user.id).map(f => f.addressee_id) || [])
+        const pendingReceivedIds = new Set(myFriendships?.filter(f => f.status === 'pending' && f.addressee_id === user.id).map(f => f.requester_id) || [])
+
+        return (data || []).map((item: any) => ({
+            ...item,
+            connectionStatus: (() => {
+                const isFriend = friendIds.has(item.id);
+                return {
+                    isFriend,
+                    isFollowing: isFriend || followingIds.has(item.id),
+                    isPending: pendingSentIds.has(item.id),
+                    isRequested: pendingReceivedIds.has(item.id),
+                };
+            })()
+        }))
     } catch (error) {
         console.error("Failed to get suggestions:", error)
         return []
