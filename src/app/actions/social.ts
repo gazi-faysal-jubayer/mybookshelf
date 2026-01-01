@@ -2,6 +2,7 @@
 
 import { createClient, getUser } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
+import { createNotification } from "./notifications"
 
 // =====================================================
 // FRIEND SYSTEM
@@ -37,12 +38,18 @@ export async function sendFriendRequest(addresseeId: string) {
     if (error) throw new Error("Failed to send friend request")
 
     // Create notification for addressee
-    await supabase.from('notifications').insert({
-        user_id: addresseeId,
-        type: 'info',
-        message: 'You have a new friend request!',
-        link: '/dashboard/connections?tab=requests'
-    })
+    // Create notification for addressee
+    await createNotification(
+        addresseeId,
+        'info',
+        'You have a new friend request!',
+        '/dashboard/connections?tab=requests',
+        {
+            relatedUserId: user.id,
+            relatedFriendshipId: undefined, // Friendship ID not returned by insert, but we can query it or just rely on user ID
+            category: 'friend_request'
+        }
+    )
 
     revalidatePath('/dashboard/connections')
     return { success: true }
@@ -75,12 +82,17 @@ export async function respondToFriendRequest(requestId: string, accept: boolean)
 
     if (accept) {
         // Notify requester
-        await supabase.from('notifications').insert({
-            user_id: request.requester_id,
-            type: 'success',
-            message: 'Your friend request was accepted!',
-            link: `/dashboard/profile/${user.id}`
-        })
+        await createNotification(
+            request.requester_id,
+            'success',
+            'Your friend request was accepted!',
+            `/dashboard/users/${user.id}`,
+            {
+                relatedUserId: user.id,
+                relatedFriendshipId: requestId,
+                category: 'friend_accepted'
+            }
+        )
 
         // Create activity
         await supabase.from('activities').insert({
@@ -192,12 +204,17 @@ export async function followUser(userId: string) {
     }
 
     // Notify user
-    await supabase.from('notifications').insert({
-        user_id: userId,
-        type: 'info',
-        message: 'You have a new follower!',
-        link: `/dashboard/profile/${user.id}`
-    })
+    // Notify user
+    await createNotification(
+        userId,
+        'info',
+        'You have a new follower!',
+        `/dashboard/users/${user.id}`,
+        {
+            relatedUserId: user.id,
+            category: 'new_follower'
+        }
+    )
 
     revalidatePath('/dashboard/profile')
     return { success: true }

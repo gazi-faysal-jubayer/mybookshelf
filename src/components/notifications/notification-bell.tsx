@@ -41,6 +41,12 @@ interface Notification {
     related_user_id?: string
     related_post_id?: string
     related_friendship_id?: string
+    related_user?: {
+        id: string
+        username: string
+        full_name: string
+        profile_picture: string
+    }
 }
 
 function getNotificationIcon(category?: string) {
@@ -179,12 +185,31 @@ export function NotificationBell() {
                                             {getNotificationIcon(notification.notification_category)}
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <p className={cn(
+                                            <div className={cn(
                                                 "text-sm leading-snug",
                                                 !notification.is_read && "font-medium"
                                             )}>
-                                                {notification.message}
-                                            </p>
+                                                {notification.related_user ? (
+                                                    <span>
+                                                        <Link
+                                                            href={`/dashboard/users/${notification.related_user.id}`}
+                                                            className="font-bold hover:underline"
+                                                            onClick={(e) => e.stopPropagation()}
+                                                        >
+                                                            {notification.related_user.full_name || notification.related_user.username}
+                                                        </Link>
+                                                        {notification.notification_category === 'post_like' && " liked your post"}
+                                                        {notification.notification_category === 'post_comment' && " commented on your post"}
+                                                        {notification.notification_category === 'post_share' && " shared your post"}
+                                                        {notification.notification_category === 'friend_request' && " sent you a friend request"}
+                                                        {notification.notification_category === 'friend_accepted' && " accepted your friend request"}
+                                                        {notification.notification_category === 'new_follower' && " started following you"}
+                                                        {!['post_like', 'post_comment', 'post_share', 'friend_request', 'friend_accepted', 'new_follower'].includes(notification.notification_category || '') && ` ${notification.message.replace(/^.*? /, '')}`}
+                                                    </span>
+                                                ) : (
+                                                    notification.message
+                                                )}
+                                            </div>
                                             <p className="text-xs text-muted-foreground mt-1">
                                                 {formatDistanceToNow(new Date(notification.created_at || notification.createdAt || new Date()))}
                                             </p>
@@ -203,38 +228,38 @@ export function NotificationBell() {
 
                                     {/* Friend request action buttons */}
                                     {notification.notification_category === 'friend_request' &&
-                                     notification.related_friendship_id &&
-                                     !notification.is_read && (
-                                        <div className="flex gap-2 ml-7">
-                                            <Button
-                                                size="sm"
-                                                className="h-7 text-xs"
-                                                onClick={(e) => handleAcceptFriendRequest(
-                                                    notification.related_friendship_id!,
-                                                    notification._id,
-                                                    e
-                                                )}
-                                                disabled={isPending}
-                                            >
-                                                <Check className="h-3 w-3 mr-1" />
-                                                Accept
-                                            </Button>
-                                            <Button
-                                                size="sm"
-                                                variant="outline"
-                                                className="h-7 text-xs"
-                                                onClick={(e) => handleDeclineFriendRequest(
-                                                    notification.related_friendship_id!,
-                                                    notification._id,
-                                                    e
-                                                )}
-                                                disabled={isPending}
-                                            >
-                                                <X className="h-3 w-3 mr-1" />
-                                                Decline
-                                            </Button>
-                                        </div>
-                                    )}
+                                        notification.related_friendship_id &&
+                                        !notification.is_read && (
+                                            <div className="flex gap-2 ml-7">
+                                                <Button
+                                                    size="sm"
+                                                    className="h-7 text-xs"
+                                                    onClick={(e) => handleAcceptFriendRequest(
+                                                        notification.related_friendship_id!,
+                                                        notification._id,
+                                                        e
+                                                    )}
+                                                    disabled={isPending}
+                                                >
+                                                    <Check className="h-3 w-3 mr-1" />
+                                                    Accept
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="h-7 text-xs"
+                                                    onClick={(e) => handleDeclineFriendRequest(
+                                                        notification.related_friendship_id!,
+                                                        notification._id,
+                                                        e
+                                                    )}
+                                                    disabled={isPending}
+                                                >
+                                                    <X className="h-3 w-3 mr-1" />
+                                                    Decline
+                                                </Button>
+                                            </div>
+                                        )}
                                 </div>
                             ))}
                         </div>

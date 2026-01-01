@@ -12,7 +12,15 @@ export async function getNotifications() {
 
         const { data: notifications, error } = await supabase
             .from('notifications')
-            .select('*')
+            .select(`
+                *,
+                related_user:related_user_id (
+                    id,
+                    username,
+                    full_name,
+                    profile_picture
+                )
+            `)
             .eq('user_id', user.id)
             .order('created_at', { ascending: false })
             .limit(20)
