@@ -107,7 +107,7 @@ export async function removeFriend(friendshipId: string) {
 
     if (error) throw new Error("Failed to remove friend")
 
-    revalidatePath('/dashboard/friends')
+    revalidatePath('/dashboard/connections')
     return { success: true }
 }
 
