@@ -80,17 +80,32 @@ export async function markAllAsRead() {
 }
 
 // Internal helper to create notification from other server actions
-export async function createNotification(userId: string, type: string, message: string, link?: string) {
+export async function createNotification(
+    userId: string,
+    type: string,
+    message: string,
+    link?: string,
+    options?: {
+        relatedUserId?: string
+        relatedPostId?: string
+        relatedFriendshipId?: string
+        category?: string
+    }
+) {
     try {
         const supabase = await createClient()
-        
+
         const { error } = await supabase
             .from('notifications')
             .insert({
                 user_id: userId,
                 type: type as any,
                 message,
-                link
+                link,
+                related_user_id: options?.relatedUserId,
+                related_post_id: options?.relatedPostId,
+                related_friendship_id: options?.relatedFriendshipId,
+                notification_category: options?.category || 'general'
             })
 
         if (error) {

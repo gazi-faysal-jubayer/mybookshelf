@@ -18,7 +18,7 @@ export default async function ChatPage({ params }: ChatPageProps) {
 
     return (
         <div className="h-[calc(100vh-8rem)] md:h-[calc(100vh-10rem)]">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-full">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 h-full">
                 {/* Conversation List - hidden on mobile when viewing chat */}
                 <div className="hidden md:block md:col-span-1 border rounded-lg overflow-hidden">
                     <Suspense fallback={<ConversationListSkeleton />}>
@@ -27,7 +27,7 @@ export default async function ChatPage({ params }: ChatPageProps) {
                 </div>
 
                 {/* Chat Area */}
-                <div className="col-span-1 md:col-span-2 border rounded-lg overflow-hidden flex flex-col">
+                <div className="col-span-1 md:col-span-3 border rounded-lg overflow-hidden flex flex-col">
                     <Suspense fallback={<ChatAreaSkeleton />}>
                         <ChatContainer conversationId={conversationId} userId={user.id} />
                     </Suspense>

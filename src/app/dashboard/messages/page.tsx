@@ -37,14 +37,14 @@ async function ConversationsContainer() {
     }
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-full">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 h-full">
             {/* Conversation List */}
             <div className="md:col-span-1 border rounded-lg overflow-hidden">
                 <ConversationList conversations={conversations} />
             </div>
 
             {/* Chat Area - Select a conversation prompt */}
-            <div className="hidden md:flex md:col-span-2 border rounded-lg items-center justify-center bg-muted/30">
+            <div className="hidden md:flex md:col-span-3 border rounded-lg items-center justify-center bg-muted/30">
                 <div className="text-center space-y-2">
                     <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground" />
                     <p className="text-muted-foreground">
@@ -58,7 +58,7 @@ async function ConversationsContainer() {
 
 function ConversationListSkeleton() {
     return (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-full">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 h-full">
             <div className="md:col-span-1 border rounded-lg p-4 space-y-4">
                 {Array.from({ length: 5 }).map((_, i) => (
                     <div key={i} className="flex items-center gap-3">
@@ -70,7 +70,7 @@ function ConversationListSkeleton() {
                     </div>
                 ))}
             </div>
-            <div className="hidden md:block md:col-span-2 border rounded-lg" />
+            <div className="hidden md:block md:col-span-3 border rounded-lg" />
         </div>
     )
 }

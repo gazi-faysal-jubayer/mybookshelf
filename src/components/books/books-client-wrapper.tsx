@@ -244,7 +244,7 @@ export function BooksClientWrapper({ books, emptyMessage = "No books found" }: B
             {/* Conditional rendering based on view mode and select mode */}
             {filteredBooks.length > 0 && (
                 viewMode === "grid" || selectMode ? (
-                    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
                         {filteredBooks.map((book) => (
                             <div key={book.id} className="relative">
                                 {selectMode && (

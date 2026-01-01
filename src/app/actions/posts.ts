@@ -2,6 +2,7 @@
 
 import { createClient, getUser } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
+import { createNotification } from "./notifications"
 
 export async function createPost(data: {
     content: string
@@ -74,6 +75,13 @@ export async function likePost(postId: string) {
 
         const supabase = await createClient()
 
+        // Get the post to find the author
+        const { data: post } = await supabase
+            .from('posts')
+            .select('user_id')
+            .eq('id', postId)
+            .single()
+
         const { error } = await supabase
             .from('post_likes')
             .insert({
@@ -88,6 +96,29 @@ export async function likePost(postId: string) {
             }
             console.error("Supabase error:", error)
             throw new Error("Failed to like post")
+        }
+
+        // Notify post author (but not if they liked their own post)
+        if (post && post.user_id !== user.id) {
+            const { data: likerProfile } = await supabase
+                .from('profiles')
+                .select('full_name, username')
+                .eq('id', user.id)
+                .single()
+
+            const likerName = likerProfile?.full_name || likerProfile?.username || 'Someone'
+
+            await createNotification(
+                post.user_id,
+                'info',
+                `${likerName} liked your post`,
+                `/dashboard/feed`,
+                {
+                    relatedUserId: user.id,
+                    relatedPostId: postId,
+                    category: 'post_like'
+                }
+            )
         }
 
         return { success: true }
@@ -132,6 +163,13 @@ export async function addComment(postId: string, content: string) {
 
         const supabase = await createClient()
 
+        // Get the post to find the author
+        const { data: post } = await supabase
+            .from('posts')
+            .select('user_id')
+            .eq('id', postId)
+            .single()
+
         const { data: comment, error } = await supabase
             .from('post_comments')
             .insert({
@@ -145,6 +183,29 @@ export async function addComment(postId: string, content: string) {
         if (error) {
             console.error("Supabase error:", error)
             throw new Error("Failed to add comment")
+        }
+
+        // Notify post author (but not if they commented on their own post)
+        if (post && post.user_id !== user.id) {
+            const { data: commenterProfile } = await supabase
+                .from('profiles')
+                .select('full_name, username')
+                .eq('id', user.id)
+                .single()
+
+            const commenterName = commenterProfile?.full_name || commenterProfile?.username || 'Someone'
+
+            await createNotification(
+                post.user_id,
+                'info',
+                `${commenterName} commented on your post`,
+                `/dashboard/feed`,
+                {
+                    relatedUserId: user.id,
+                    relatedPostId: postId,
+                    category: 'post_comment'
+                }
+            )
         }
 
         return { success: true, commentId: comment.id }
@@ -547,6 +608,13 @@ export async function repostPost(postId: string, quote?: string) {
 
         const supabase = await createClient()
 
+        // Get the original post to find the author
+        const { data: post } = await supabase
+            .from('posts')
+            .select('user_id')
+            .eq('id', postId)
+            .single()
+
         const { error } = await supabase
             .from('post_reposts')
             .insert({
@@ -561,6 +629,29 @@ export async function repostPost(postId: string, quote?: string) {
             }
             console.error("Supabase error:", error)
             throw new Error("Failed to repost")
+        }
+
+        // Notify post author (but not if they shared their own post)
+        if (post && post.user_id !== user.id) {
+            const { data: sharerProfile } = await supabase
+                .from('profiles')
+                .select('full_name, username')
+                .eq('id', user.id)
+                .single()
+
+            const sharerName = sharerProfile?.full_name || sharerProfile?.username || 'Someone'
+
+            await createNotification(
+                post.user_id,
+                'info',
+                `${sharerName} shared your post`,
+                `/dashboard/feed`,
+                {
+                    relatedUserId: user.id,
+                    relatedPostId: postId,
+                    category: 'post_share'
+                }
+            )
         }
 
         revalidatePath("/dashboard/feed")

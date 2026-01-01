@@ -14,7 +14,7 @@ export default async function AnalyticsPage() {
     }
 
     return (
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-6 max-w-7xl mx-auto">
             <h1 className="text-3xl font-bold tracking-tight">Reading Insights</h1>
 
             <StatCards

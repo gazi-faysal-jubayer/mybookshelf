@@ -2,6 +2,7 @@
 
 import { createClient, getUser } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
+import { createNotification } from "./notifications"
 
 export async function sendFriendRequest(userId: string) {
     try {
@@ -10,6 +11,15 @@ export async function sendFriendRequest(userId: string) {
         if (user.id === userId) throw new Error("Cannot send friend request to yourself")
 
         const supabase = await createClient()
+
+        // Get current user's profile for notification message
+        const { data: currentProfile } = await supabase
+            .from('profiles')
+            .select('full_name, username')
+            .eq('id', user.id)
+            .single()
+
+        const senderName = currentProfile?.full_name || currentProfile?.username || 'Someone'
 
         // Check if a friendship already exists
         const { data: existing } = await supabase
@@ -24,18 +34,33 @@ export async function sendFriendRequest(userId: string) {
             if (existing.status === 'blocked') throw new Error("Cannot send request")
         }
 
-        const { error } = await supabase
+        const { data: friendship, error } = await supabase
             .from('friendships')
             .insert({
                 requester_id: user.id,
                 addressee_id: userId,
                 status: 'pending',
             })
+            .select('id')
+            .single()
 
         if (error) {
             console.error("Supabase error:", error)
             throw new Error("Failed to send friend request")
         }
+
+        // Create notification for the recipient
+        await createNotification(
+            userId,
+            'info',
+            `${senderName} sent you a friend request`,
+            `/dashboard/connections`,
+            {
+                relatedUserId: user.id,
+                relatedFriendshipId: friendship?.id,
+                category: 'friend_request'
+            }
+        )
 
         revalidatePath("/dashboard/connections")
         revalidatePath(`/dashboard/users/${userId}`)
@@ -52,6 +77,15 @@ export async function acceptFriendRequest(friendshipId: string) {
         if (!user) throw new Error("Unauthorized")
 
         const supabase = await createClient()
+
+        // Get current user's profile for notification message
+        const { data: currentProfile } = await supabase
+            .from('profiles')
+            .select('full_name, username')
+            .eq('id', user.id)
+            .single()
+
+        const accepterName = currentProfile?.full_name || currentProfile?.username || 'Someone'
 
         // Verify this request is addressed to the current user
         const { data: friendship } = await supabase
@@ -73,6 +107,19 @@ export async function acceptFriendRequest(friendshipId: string) {
             console.error("Supabase error:", error)
             throw new Error("Failed to accept friend request")
         }
+
+        // Notify the requester that their request was accepted
+        await createNotification(
+            friendship.requester_id,
+            'success',
+            `${accepterName} accepted your friend request!`,
+            `/dashboard/users/${user.id}`,
+            {
+                relatedUserId: user.id,
+                relatedFriendshipId: friendshipId,
+                category: 'friend_accepted'
+            }
+        )
 
         revalidatePath("/dashboard/connections")
         return { success: true }
@@ -143,6 +190,15 @@ export async function followUser(userId: string) {
 
         const supabase = await createClient()
 
+        // Get current user's profile for notification message
+        const { data: currentProfile } = await supabase
+            .from('profiles')
+            .select('full_name, username')
+            .eq('id', user.id)
+            .single()
+
+        const followerName = currentProfile?.full_name || currentProfile?.username || 'Someone'
+
         const { error } = await supabase
             .from('follows')
             .insert({
@@ -158,6 +214,18 @@ export async function followUser(userId: string) {
             console.error("Supabase error:", error)
             throw new Error("Failed to follow user")
         }
+
+        // Notify the user they have a new follower
+        await createNotification(
+            userId,
+            'info',
+            `${followerName} started following you`,
+            `/dashboard/users/${user.id}`,
+            {
+                relatedUserId: user.id,
+                category: 'new_follower'
+            }
+        )
 
         revalidatePath("/dashboard/connections")
         revalidatePath(`/dashboard/users/${userId}`)

@@ -30,9 +30,9 @@ export default async function BooksPage() {
 
     return (
         <div className="flex flex-col gap-8">
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-12">
                 <RecentActivity />
-                <div className="col-span-4 lg:col-span-4 flex flex-col justify-center p-6 border rounded-lg bg-card shadow-sm">
+                <div className="col-span-1 md:col-span-1 lg:col-span-7 flex flex-col justify-center p-6 border rounded-lg bg-card shadow-sm">
                     <h3 className="text-lg font-medium">Welcome back, {userWithProfile?.profile?.full_name || userWithProfile?.email?.split('@')[0] || "Reader"}!</h3>
                     <p className="text-sm text-muted-foreground mt-2">
                         You have {booksList.length} books in your collection.
@@ -96,7 +96,7 @@ export default async function BooksPage() {
                     </Button>
                 </div>
             ) : (
-                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
                     {booksList.map((book) => (
                         <BookCard key={book.id} book={{ ...book, _id: book.id }} />
                     ))}

@@ -17,7 +17,7 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
     const { userId } = await params
 
     return (
-        <div className="max-w-4xl mx-auto space-y-8">
+        <div className="max-w-4xl lg:max-w-5xl xl:max-w-6xl mx-auto space-y-8">
             <Suspense fallback={<ProfileSkeleton />}>
                 <ProfileContainer userId={userId} currentUserId={user.id} />
             </Suspense>

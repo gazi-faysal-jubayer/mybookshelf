@@ -11,7 +11,7 @@ export default async function FeedPage() {
     const { posts, nextCursor } = await getFeed('global')
 
     return (
-        <div className="max-w-2xl mx-auto">
+        <div className="max-w-2xl lg:max-w-3xl mx-auto">
             <div className="mb-6">
                 <h2 className="text-2xl font-bold tracking-tight">Feed</h2>
                 <p className="text-muted-foreground">

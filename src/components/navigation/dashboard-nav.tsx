@@ -25,7 +25,7 @@ const mobileOnlyItems = [
 
 export function DesktopNav() {
     return (
-        <nav className="hidden md:flex md:items-center md:gap-1 lg:gap-2">
+        <nav className="hidden md:flex md:items-center md:gap-2 lg:gap-3 xl:gap-4">
             <Link
                 href="/dashboard"
                 className="flex items-center gap-2 text-lg font-semibold mr-4"

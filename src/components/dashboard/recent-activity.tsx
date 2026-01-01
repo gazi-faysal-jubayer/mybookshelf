@@ -30,7 +30,7 @@ export async function RecentActivity() {
         .limit(5)
 
     return (
-        <Card className="col-span-3">
+        <Card className="col-span-1 md:col-span-1 lg:col-span-5">
             <CardHeader>
                 <CardTitle>Recent Activity</CardTitle>
             </CardHeader>
