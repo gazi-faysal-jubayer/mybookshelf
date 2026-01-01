@@ -52,7 +52,7 @@ export default async function DashboardLayout({
                 </div>
             </div>
             <div className="flex flex-col">
-                <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[60px] lg:px-6">
+                <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background/95 backdrop-blur px-4 lg:h-[60px] lg:px-6">
                     <MobileNav />
                     <div className="w-full flex-1">
                         <GlobalSearch />
