@@ -6,6 +6,8 @@ import { PendingRequests } from "@/components/connections/pending-requests"
 import { Users, UserPlus, UserCheck, Clock, Sparkles } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 
+export const dynamic = 'force-dynamic'
+
 export default async function ConnectionsPage() {
     const [friends, following, followers, pendingRequests, suggestions] = await Promise.all([
         getFriends(),

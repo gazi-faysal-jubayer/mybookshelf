@@ -4,6 +4,8 @@ import { StatCards } from "./stat-cards"
 import { GenreChart } from "./charts/genre-chart"
 import { ActivityChart } from "./charts/activity-chart"
 
+export const dynamic = 'force-dynamic'
+
 export default async function AnalyticsPage() {
     const stats = await getReadingStats()
 

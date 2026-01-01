@@ -4,6 +4,8 @@ import { SearchResults } from "@/components/search/search-results"
 import { SearchHeader } from "@/components/search/search-header"
 import { MobileSearchFilters } from "@/components/search/mobile-search-filters"
 
+export const dynamic = 'force-dynamic'
+
 export default function SearchPage({
     searchParams,
 }: {
