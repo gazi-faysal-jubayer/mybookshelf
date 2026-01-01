@@ -58,6 +58,7 @@ export default async function BooksPage() {
                         <TabsTrigger value="all" className="text-xs sm:text-sm">All ({booksList.length})</TabsTrigger>
                         <TabsTrigger value="owned" className="text-xs sm:text-sm">Owned ({ownedBooks.length})</TabsTrigger>
                         <TabsTrigger value="reading" className="text-xs sm:text-sm">Reading ({currentlyReading.length})</TabsTrigger>
+                        <TabsTrigger value="borrowed" className="text-xs sm:text-sm">Borrowed ({borrowedBooks.length})</TabsTrigger>
                         <TabsTrigger value="lent" className="text-xs sm:text-sm">Lent ({lentOutBooks.length})</TabsTrigger>
                         <TabsTrigger value="wishlist" className="text-xs sm:text-sm">Wishlist ({wishlistBooks.length})</TabsTrigger>
                     </TabsList>
@@ -73,6 +74,10 @@ export default async function BooksPage() {
 
                 <TabsContent value="reading">
                     <BooksClientWrapper books={currentlyReading} emptyMessage="No books currently being read" />
+                </TabsContent>
+
+                <TabsContent value="borrowed">
+                    <BooksClientWrapper books={borrowedBooks} emptyMessage="No borrowed books yet" />
                 </TabsContent>
 
                 <TabsContent value="lent">

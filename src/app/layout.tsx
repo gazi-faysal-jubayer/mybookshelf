@@ -6,6 +6,8 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import NextTopLoader from "nextjs-toploader";
 
+import { Analytics } from "@vercel/analytics/react"
+
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
@@ -29,6 +31,7 @@ export default function RootLayout({
                 >
                     <NextTopLoader showSpinner={false} />
                     {children}
+                    <Analytics />
                     <Toaster />
                 </ThemeProvider>
             </body>
