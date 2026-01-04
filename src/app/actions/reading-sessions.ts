@@ -109,21 +109,29 @@ export async function addReadingSession(bookId: string, data: AddSessionData) {
 
     if (sessionError) throw new Error(sessionError.message)
 
-    // Create feed post
-    await supabase.from("posts").insert({
-        user_id: user.id,
-        type: "reading_session",
-        content: data.notes || `Read ${data.pages_read} pages of ${book.title}`,
-        metadata: {
-            bookId: bookId,
-            bookTitle: book.title,
-            bookAuthor: book.author,
-            bookCover: book.cover_image,
-            pagesRead: data.pages_read,
-            sessionId: session.id,
-            mood: data.mood
+    // Create feed post (optimistic - don't fail session if this fails)
+    try {
+        const { error: postError } = await supabase.from("posts").insert({
+            user_id: user.id,
+            type: "reading_session",
+            content: data.notes || `Read ${data.pages_read} pages of ${book.title}`,
+            metadata: {
+                bookId: bookId,
+                bookTitle: book.title,
+                bookAuthor: book.author,
+                bookCover: book.cover_image,
+                pagesRead: data.pages_read,
+                sessionId: session.id,
+                mood: data.mood
+            }
+        })
+
+        if (postError) {
+            console.error("Failed to create feed post:", postError)
         }
-    })
+    } catch (error) {
+        console.error("Error creating feed post:", error)
+    }
 
     // Update book's current page
     const newCurrentPage = data.end_page || (book.current_page || 0) + data.pages_read
