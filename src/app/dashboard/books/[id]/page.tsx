@@ -169,7 +169,7 @@ export default async function BookPage({ params }: { params: { id: string } }) {
                     {/* Right Column - Always Visible Context or Additional Info */}
                     <div className="space-y-6">
                         {/* Quick Notes */}
-                        <QuickNotesCard bookId={book.id} notes={book.notes} />
+                        <QuickNotesCard bookId={book.id} thoughts={thoughts || []} />
 
                         {/* Purchase/Ownership Info */}
                         <Card>

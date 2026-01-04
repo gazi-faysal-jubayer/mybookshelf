@@ -70,7 +70,7 @@ export async function addReadingSession(bookId: string, data: AddSessionData) {
     // Get current book data
     const { data: book } = await supabase
         .from("books")
-        .select("current_page, pages, reading_started_at")
+        .select("title, author, cover_image, current_page, pages, reading_started_at")
         .eq("id", bookId)
         .eq("user_id", user.id)
         .single()
@@ -90,20 +90,40 @@ export async function addReadingSession(bookId: string, data: AddSessionData) {
     }
 
     // Insert reading session
-    const { error: sessionError } = await supabase.from("reading_sessions").insert({
-        book_id: bookId,
-        user_id: user.id,
-        session_date: data.session_date?.toISOString().split("T")[0] || new Date().toISOString().split("T")[0],
-        start_page: data.start_page,
-        end_page: data.end_page,
-        pages_read: data.pages_read,
-        time_spent_minutes: data.time_spent_minutes,
-        notes: data.notes,
-        mood: data.mood,
-        session_rating: data.session_rating,
-    })
+    const { data: session, error: sessionError } = await supabase
+        .from("reading_sessions")
+        .insert({
+            book_id: bookId,
+            user_id: user.id,
+            session_date: data.session_date?.toISOString().split("T")[0] || new Date().toISOString().split("T")[0],
+            start_page: data.start_page,
+            end_page: data.end_page,
+            pages_read: data.pages_read,
+            time_spent_minutes: data.time_spent_minutes,
+            notes: data.notes,
+            mood: data.mood,
+            session_rating: data.session_rating,
+        })
+        .select()
+        .single()
 
     if (sessionError) throw new Error(sessionError.message)
+
+    // Create feed post
+    await supabase.from("posts").insert({
+        user_id: user.id,
+        type: "reading_session",
+        content: data.notes || `Read ${data.pages_read} pages of ${book.title}`,
+        metadata: {
+            bookId: bookId,
+            bookTitle: book.title,
+            bookAuthor: book.author,
+            bookCover: book.cover_image,
+            pagesRead: data.pages_read,
+            sessionId: session.id,
+            mood: data.mood
+        }
+    })
 
     // Update book's current page
     const newCurrentPage = data.end_page || (book.current_page || 0) + data.pages_read
