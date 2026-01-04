@@ -97,28 +97,11 @@ export default function Home() {
 
             {/* Hero Section */}
             <section className="hero-pattern pt-32 pb-20 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
-                {/* Decorative elements - Background */}
-                <div className="absolute top-20 left-10 opacity-60 animate-pulse-slow">
-                    <NextImage src="/assets/decorations/decoration_squiggle.png" alt="" width={100} height={100} className="w-24 h-auto text-primary/20" />
-                </div>
-                <div className="absolute top-40 right-20 opacity-40">
-                    <NextImage src="/assets/decorations/decoration_dots_cluster.png" alt="" width={60} height={60} className="w-16 h-auto" />
-                </div>
-                <div className="absolute bottom-10 left-1/4 opacity-30">
-                    <NextImage src="/assets/decorations/decoration_curl.png" alt="" width={120} height={40} className="w-32 h-auto" />
-                </div>
-
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full bg-primary/5 blur-3xl -z-10" />
-
 
                 <div className="max-w-7xl mx-auto">
                     <div className="grid lg:grid-cols-2 gap-12 items-center">
-                        <div className="space-y-8 animate-fade-in relative">
-                            {/* Tiny sparkle near text */}
-                            <div className="absolute -top-6 -left-6 opacity-50 hidden sm:block">
-                                <NextImage src="/assets/decorations/decoration_sparkle.png" alt="" width={40} height={40} />
-                            </div>
-
+                        <div className="space-y-8 animate-fade-in relative z-10">
                             <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full text-sm font-medium">
                                 <Sparkles className="h-4 w-4" />
                                 Your Personal Library, Reimagined
@@ -135,9 +118,6 @@ export default function Home() {
                                 Create your cozy digital library, track your reading journey,
                                 lend books to friends, and discover your next favorite read.
                                 All in one beautiful place.
-                                <span className="absolute -right-8 top-0 opacity-40 hidden sm:block">
-                                    <NextImage src="/assets/decorations/decoration_leaf.png" alt="" width={30} height={30} />
-                                </span>
                             </p>
 
                             <div className="flex flex-wrap gap-4">
@@ -168,38 +148,18 @@ export default function Home() {
                             </div>
                         </div>
 
-                        {/* Hero illustration - Composition */}
-                        <div className="relative h-[400px] lg:h-[500px] hidden lg:block">
-                            {/* Central Illustration Composition */}
-                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-float w-full max-w-md">
-                                <div className="relative z-10">
-                                    <NextImage
-                                        src="/assets/illustrations/illustration_stack_of_books.png"
-                                        alt="Stack of books"
-                                        width={400}
-                                        height={400}
-                                        className="w-full h-auto drop-shadow-xl"
-                                        priority
-                                    />
-                                </div>
+                        {/* Hero illustration - Main Image */}
+                        <div className="relative h-[400px] lg:h-[600px] hidden lg:flex items-center justify-center">
+                            <div className="relative z-10 w-full h-full flex items-center justify-center animate-float">
+                                <NextImage
+                                    src="/assets/reading-haven.png"
+                                    alt="Cozy reading haven"
+                                    width={800}
+                                    height={800}
+                                    className="w-full h-auto object-contain drop-shadow-2xl rounded-2xl"
+                                    priority
+                                />
                             </div>
-
-                            {/* Floating decorative elements around the central image */}
-                            <div className="absolute top-20 right-10 animate-float stagger-1 opacity-90">
-                                <NextImage src="/assets/illustrations/illustration_coffee_cup.png" alt="Coffee" width={100} height={100} className="w-24 h-auto drop-shadow-md" />
-                            </div>
-
-                            <div className="absolute bottom-20 left-0 animate-float stagger-2 opacity-90">
-                                <NextImage src="/assets/illustrations/illustration_reading_glasses.png" alt="Glasses" width={120} height={60} className="w-32 h-auto drop-shadow-md -rotate-12" />
-                            </div>
-
-                            <div className="absolute top-10 left-10 animate-pulse-slow opacity-60">
-                                <NextImage src="/assets/decorations/decoration_heart_doodle.png" alt="Heart" width={50} height={50} />
-                            </div>
-                            <div className="absolute bottom-40 right-0 animate-pulse-slow opacity-60">
-                                <NextImage src="/assets/decorations/decoration_star_doodle.png" alt="Star" width={60} height={60} />
-                            </div>
-
                         </div>
                     </div>
                 </div>

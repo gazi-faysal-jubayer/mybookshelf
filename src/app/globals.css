@@ -17,35 +17,40 @@
 
 @layer base {
   :root {
-    /* Royal Light Theme (optional, but focusing on Royal Dark) */
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
+    /* Royal Light Theme */
+    --background: 40 33% 98%;
+    /* #FAF9F6 - Off White/Cream */
+    --foreground: 224 71% 4%;
+    /* #020617 - Deepest Navy */
 
     --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
+    /* White */
+    --card-foreground: 224 71% 4%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
+    --popover-foreground: 224 71% 4%;
 
-    --primary: 45 60% 50%;
-    /* Royal Gold */
-    --primary-foreground: 0 0% 98%;
+    --primary: 45 93% 47%;
+    /* #EAB308 - Royal Gold */
+    --primary-foreground: 224 71% 4%;
 
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
+    --secondary: 220 14% 96%;
+    /* #F1F5F9 - Light Gray/Blueish */
+    --secondary-foreground: 224 71% 4%;
 
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 8% 46%;
 
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
+    --accent: 45 93% 90%;
+    /* Light Gold */
+    --accent-foreground: 224 71% 4%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 45 60% 50%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 45 93% 47%;
 
     --radius: 0.5rem;
   }
@@ -54,27 +59,28 @@
     /* Royal Dark Theme */
     --background: 224 71% 4%;
     /* #020617 - Deepest Royal Navy/Black */
-    --foreground: 0 0% 98%;
+    --foreground: 45 20% 96%;
+    /* Off-white gold tint */
 
     --card: 222 47% 11%;
     /* #0F172A - Rich Navy */
-    --card-foreground: 0 0% 98%;
+    --card-foreground: 45 20% 96%;
 
     --popover: 222 47% 11%;
-    --popover-foreground: 0 0% 98%;
+    --popover-foreground: 45 20% 96%;
 
     --primary: 45 93% 47%;
     /* #EAB308 - Royal Gold/Amber */
     --primary-foreground: 222 47% 11%;
 
     --secondary: 217 33% 17%;
-    --secondary-foreground: 0 0% 98%;
+    --secondary-foreground: 45 20% 96%;
 
     --muted: 217 33% 17%;
     --muted-foreground: 215 20% 65%;
 
     --accent: 217 33% 17%;
-    --accent-foreground: 0 0% 98%;
+    --accent-foreground: 45 20% 96%;
 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
@@ -114,42 +120,44 @@
     opacity: 0.03;
   }
 
-  /* Cozy card style */
+  /* Cozy card style - Adapted for Royal Theme */
   .cozy-card {
     @apply bg-card rounded-xl shadow-lg border border-border/50;
-    box-shadow: 0 4px 20px -4px rgba(139, 90, 43, 0.1),
-      0 8px 40px -8px rgba(139, 90, 43, 0.05);
+    box-shadow: 0 4px 20px -4px rgba(2, 6, 23, 0.1),
+      0 8px 40px -8px rgba(2, 6, 23, 0.05);
   }
 
-  /* Warm gradient backgrounds */
+  /* Gradient backgrounds using CSS variables */
   .warm-gradient {
+    /* Using primary/accent for the gradient */
     background: linear-gradient(135deg,
-        hsl(var(--warm-cream)) 0%,
-        hsl(var(--warm-beige)) 50%,
-        hsl(var(--warm-tan)) 100%);
+        hsl(var(--background)) 0%,
+        hsl(var(--accent)) 100%);
   }
 
   .terracotta-gradient {
+    /* Using Primary (Gold) gradient */
     background: linear-gradient(135deg,
-        hsl(var(--terracotta)) 0%,
-        hsl(var(--terracotta-dark)) 100%);
+        hsl(var(--primary)) 0%,
+        hsl(45, 93%, 35%) 100%);
+    /* Gold to Darker Gold */
   }
 
   /* Hero pattern */
   .hero-pattern {
     background-color: hsl(var(--background));
     background-image:
-      radial-gradient(at 20% 30%, hsla(28, 60%, 55%, 0.1) 0px, transparent 50%),
-      radial-gradient(at 80% 70%, hsla(16, 50%, 45%, 0.08) 0px, transparent 50%),
-      radial-gradient(at 50% 50%, hsla(35, 30%, 90%, 0.5) 0px, transparent 70%);
+      radial-gradient(at 20% 30%, hsla(45, 93%, 47%, 0.1) 0px, transparent 50%),
+      radial-gradient(at 80% 70%, hsla(222, 47%, 11%, 0.08) 0px, transparent 50%),
+      radial-gradient(at 50% 50%, hsla(45, 93%, 90%, 0.5) 0px, transparent 70%);
   }
 
   .dark .hero-pattern {
     background-color: hsl(var(--background));
     background-image:
-      radial-gradient(at 20% 30%, hsla(28, 60%, 55%, 0.15) 0px, transparent 50%),
-      radial-gradient(at 80% 70%, hsla(16, 50%, 45%, 0.12) 0px, transparent 50%),
-      radial-gradient(at 50% 50%, hsla(24, 15%, 20%, 0.5) 0px, transparent 70%);
+      radial-gradient(at 20% 30%, hsla(45, 93%, 47%, 0.15) 0px, transparent 50%),
+      radial-gradient(at 80% 70%, hsla(222, 47%, 20%, 0.12) 0px, transparent 50%),
+      radial-gradient(at 50% 50%, hsla(45, 15%, 20%, 0.5) 0px, transparent 70%);
   }
 
   /* Animated underline for links */
@@ -237,32 +245,32 @@
 
   .book-card-hover:hover {
     @apply -translate-y-2 shadow-xl;
-    box-shadow: 0 20px 40px -12px rgba(139, 90, 43, 0.25);
+    box-shadow: 0 20px 40px -12px rgba(2, 6, 23, 0.25);
   }
 
   /* Decorative elements */
   .decorative-dots {
-    background-image: radial-gradient(hsl(var(--terracotta) / 0.2) 1px, transparent 1px);
+    background-image: radial-gradient(hsl(var(--primary) / 0.2) 1px, transparent 1px);
     background-size: 20px 20px;
   }
 }
 
-/* Custom scrollbar for the warm theme */
+/* Custom scrollbar for the royal theme */
 ::-webkit-scrollbar {
   width: 10px;
 }
 
 ::-webkit-scrollbar-track {
-  background: hsl(var(--warm-beige));
+  background: hsl(var(--muted));
 }
 
 ::-webkit-scrollbar-thumb {
-  background: hsl(var(--terracotta) / 0.4);
+  background: hsl(var(--primary) / 0.6);
   border-radius: 5px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--terracotta) / 0.6);
+  background: hsl(var(--primary) / 0.8);
 }
 
 /* Dark mode scrollbar */
