@@ -21,25 +21,26 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { 
-    Heart, 
-    MessageCircle, 
-    MoreHorizontal, 
-    Trash2, 
-    Globe, 
-    Users, 
-    Lock, 
-    Book, 
+import {
+    Heart,
+    MessageCircle,
+    MoreHorizontal,
+    Trash2,
+    Globe,
+    Users,
+    Lock,
+    Book,
     Loader2,
     Bookmark,
     Repeat2,
     Share,
     Copy,
-    Flag
+    Flag,
+    Star
 } from "lucide-react"
-import { 
-    likePost, 
-    unlikePost, 
+import {
+    likePost,
+    unlikePost,
     deletePost,
     bookmarkPost,
     unbookmarkPost,
@@ -57,12 +58,24 @@ interface PostCardProps {
         content: string
         visibility: string
         created_at: string
+        type?: "text" | "reading_session" | "review" | "finished_book"
+        metadata?: {
+            rating?: number
+            pages_read?: number
+            mood?: string
+            title?: string
+            book_title?: string
+            book_author?: string
+            is_spoiler?: boolean
+            [key: string]: any
+        }
         user: {
             id: string
             full_name?: string
             username: string
             profile_picture?: string
         }
+        book_id?: string
         book?: {
             id: string
             title: string
@@ -240,8 +253,8 @@ export function PostCard({ post, currentUserId, onDelete }: PostCardProps) {
                                     {isOwner && (
                                         <>
                                             <DropdownMenuSeparator />
-                                            <DropdownMenuItem 
-                                                onClick={() => setShowDeleteDialog(true)} 
+                                            <DropdownMenuItem
+                                                onClick={() => setShowDeleteDialog(true)}
                                                 className="text-destructive focus:text-destructive"
                                             >
                                                 <Trash2 className="h-4 w-4 mr-2" />
@@ -254,115 +267,167 @@ export function PostCard({ post, currentUserId, onDelete }: PostCardProps) {
                         </div>
                     </div>
                 </CardHeader>
-            <CardContent className="pb-3">
-                <p className="whitespace-pre-wrap">{post.content}</p>
-                {post.book && (
-                    <Link href={`/dashboard/books/${post.book.id}`}>
-                        <div className="mt-3 flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
-                            {post.book.cover_image ? (
-                                <img
-                                    src={post.book.cover_image}
-                                    alt={post.book.title}
-                                    className="w-10 h-14 object-cover rounded"
-                                />
-                            ) : (
-                                <div className="w-10 h-14 bg-muted rounded flex items-center justify-center">
-                                    <Book className="h-5 w-5 text-muted-foreground" />
-                                </div>
-                            )}
-                            <div className="min-w-0">
-                                <p className="font-medium text-sm truncate">{post.book.title}</p>
-                                <p className="text-xs text-muted-foreground truncate">{post.book.author}</p>
-                            </div>
+                <CardContent className="pb-3">
+                    {/* Special Header for Activities */}
+                    {["reading_session", "finished_book", "review"].includes(post.type || "") && (
+                        <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
+                            {post.type === "reading_session" && <Book className="h-4 w-4 text-blue-500" />}
+                            {post.type === "finished_book" && <Flag className="h-4 w-4 text-green-500" />}
+                            {post.type === "review" && <Star className="h-4 w-4 text-amber-500" />}
+                            <span className="font-medium">
+                                {post.type === "reading_session" && "Reading Update"}
+                                {post.type === "finished_book" && "Finished Reading"}
+                                {post.type === "review" && "Book Review"}
+                            </span>
                         </div>
-                    </Link>
-                )}
-            </CardContent>
-            <CardFooter className="flex flex-col items-stretch pt-0">
-                <div className="flex items-center justify-between border-t pt-3">
-                    <div className="flex items-center gap-1">
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className={`gap-1.5 ${liked ? 'text-red-500 hover:text-red-600' : 'hover:text-red-500'}`}
-                            onClick={handleLike}
-                            disabled={isPending}
-                        >
-                            {isPending ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                                <Heart className={`h-4 w-4 ${liked ? 'fill-current' : ''}`} />
-                            )}
-                            {likeCount > 0 && <span className="text-xs">{likeCount}</span>}
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className={`gap-1.5 ${showComments ? 'text-primary' : ''}`}
-                            onClick={() => setShowComments(!showComments)}
-                        >
-                            <MessageCircle className="h-4 w-4" />
-                            {commentCount > 0 && <span className="text-xs">{commentCount}</span>}
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className={`gap-1.5 ${reposted ? 'text-green-500 hover:text-green-600' : 'hover:text-green-500'}`}
-                            onClick={handleRepost}
-                            disabled={isPending || isOwner}
-                            title={isOwner ? "You can't repost your own post" : reposted ? "Remove repost" : "Repost"}
-                        >
-                            <Repeat2 className={`h-4 w-4 ${reposted ? 'stroke-[2.5]' : ''}`} />
-                        </Button>
-                    </div>
-                    <div className="flex items-center gap-1">
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className={`gap-1.5 ${bookmarked ? 'text-yellow-500 hover:text-yellow-600' : 'hover:text-yellow-500'}`}
-                            onClick={handleBookmark}
-                            disabled={isPending}
-                        >
-                            <Bookmark className={`h-4 w-4 ${bookmarked ? 'fill-current' : ''}`} />
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={handleShare}
-                        >
-                            <Share className="h-4 w-4" />
-                        </Button>
-                    </div>
-                </div>
-                {showComments && (
-                    <CommentsSection
-                        postId={post.id}
-                        onCommentAdded={() => setCommentCount(prev => prev + 1)}
-                    />
-                )}
-            </CardFooter>
-        </Card>
+                    )}
 
-        <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                    <AlertDialogTitle>Delete post?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                        This action cannot be undone. This will permanently delete your post
-                        and remove all likes and comments.
-                    </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction 
-                        onClick={handleDelete}
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    >
-                        Delete
-                    </AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
+                    {/* Main Content */}
+                    <div className="whitespace-pre-wrap">
+                        {post.type === "review" ? (
+                            <div className="space-y-2">
+                                <div className="flex items-center gap-1 text-amber-500">
+                                    {Array.from({ length: 5 }).map((_, i) => (
+                                        <Star
+                                            key={i}
+                                            className={`h-4 w-4 ${i < (post.metadata?.rating || 0) ? "fill-current" : "text-muted opacity-30"}`}
+                                        />
+                                    ))}
+                                </div>
+                                {post.metadata?.title && <h4 className="font-bold text-lg">{post.metadata.title}</h4>}
+                                <p>{post.content}</p>
+                            </div>
+                        ) : (
+                            <p>{post.content}</p>
+                        )}
+                    </div>
+
+                    {/* Additional Metadata Visuals */}
+                    {post.type === "reading_session" && post.metadata?.pages_read && (
+                        <div className="mt-2 text-sm bg-muted/30 p-2 rounded border border-dashed text-muted-foreground">
+                            Read <strong>{post.metadata.pages_read}</strong> pages
+                            {post.metadata?.mood && <span> • Mood: {post.metadata.mood}</span>}
+                        </div>
+                    )}
+
+                    {/* Book Card Attachment */}
+                    {(post.book || post.metadata?.book_title) && (
+                        <Link href={`/dashboard/books/${post.book?.id || post.book_id}`}>
+                            <div className="mt-3 flex items-start gap-4 p-4 rounded-lg bg-muted/40 hover:bg-muted transition-colors border">
+                                {(post.book?.cover_image) ? (
+                                    <img
+                                        src={post.book.cover_image}
+                                        alt={post.book?.title || post.metadata?.book_title}
+                                        className="w-16 h-24 object-cover rounded shadow-sm"
+                                    />
+                                ) : (
+                                    <div className="w-16 h-24 bg-muted rounded flex items-center justify-center shadow-sm border">
+                                        <Book className="h-8 w-8 text-muted-foreground" />
+                                    </div>
+                                )}
+                                <div className="min-w-0 flex-1">
+                                    <p className="font-semibold text-base truncate">
+                                        {post.book?.title || post.metadata?.book_title}
+                                    </p>
+                                    <p className="text-sm text-muted-foreground truncate">
+                                        {post.book?.author || post.metadata?.book_author}
+                                    </p>
+                                    {post.type === "finished_book" && (
+                                        <div className="mt-2 inline-flex items-center px-2 py-1 rounded-full bg-green-100 text-green-700 text-xs font-medium">
+                                            <Flag className="h-3 w-3 mr-1" />
+                                            Completed
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </Link>
+                    )}
+                </CardContent>
+                <CardFooter className="flex flex-col items-stretch pt-0">
+                    <div className="flex items-center justify-between border-t pt-3">
+                        <div className="flex items-center gap-1">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className={`gap-1.5 ${liked ? 'text-red-500 hover:text-red-600' : 'hover:text-red-500'}`}
+                                onClick={handleLike}
+                                disabled={isPending}
+                            >
+                                {isPending ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                    <Heart className={`h-4 w-4 ${liked ? 'fill-current' : ''}`} />
+                                )}
+                                {likeCount > 0 && <span className="text-xs">{likeCount}</span>}
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className={`gap-1.5 ${showComments ? 'text-primary' : ''}`}
+                                onClick={() => setShowComments(!showComments)}
+                            >
+                                <MessageCircle className="h-4 w-4" />
+                                {commentCount > 0 && <span className="text-xs">{commentCount}</span>}
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className={`gap-1.5 ${reposted ? 'text-green-500 hover:text-green-600' : 'hover:text-green-500'}`}
+                                onClick={handleRepost}
+                                disabled={isPending || isOwner}
+                                title={isOwner ? "You can't repost your own post" : reposted ? "Remove repost" : "Repost"}
+                            >
+                                <Repeat2 className={`h-4 w-4 ${reposted ? 'stroke-[2.5]' : ''}`} />
+                            </Button>
+                        </div>
+                        <div className="flex items-center gap-1">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className={`gap-1.5 ${bookmarked ? 'text-yellow-500 hover:text-yellow-600' : 'hover:text-yellow-500'}`}
+                                onClick={handleBookmark}
+                                disabled={isPending}
+                            >
+                                <Bookmark className={`h-4 w-4 ${bookmarked ? 'fill-current' : ''}`} />
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={handleShare}
+                            >
+                                <Share className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    </div>
+                    {showComments && (
+                        <CommentsSection
+                            postId={post.id}
+                            onCommentAdded={() => setCommentCount(prev => prev + 1)}
+                        />
+                    )}
+                </CardFooter>
+            </Card>
+
+            <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete post?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This action cannot be undone. This will permanently delete your post
+                            and remove all likes and comments.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleDelete}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                            Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </>
     )
 }

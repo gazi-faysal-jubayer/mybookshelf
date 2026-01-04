@@ -4,14 +4,25 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts"
 
 interface ActivityChartProps {
-    data: { name: string; count: number }[]
+    data: any[]
+    title: string
+    description?: string
+    dataKey: string
+    color?: string
 }
 
-export function ActivityChart({ data }: ActivityChartProps) {
+export function ActivityChart({
+    data,
+    title,
+    description,
+    dataKey,
+    color = "#adfa1d"
+}: ActivityChartProps) {
     return (
         <Card className="col-span-1">
             <CardHeader>
-                <CardTitle>Reading Activity</CardTitle>
+                <CardTitle>{title}</CardTitle>
+                {description && <p className="text-sm text-muted-foreground">{description}</p>}
             </CardHeader>
             <CardContent>
                 <div className="h-[300px]">
@@ -36,7 +47,7 @@ export function ActivityChart({ data }: ActivityChartProps) {
                                 cursor={{ fill: 'transparent' }}
                                 contentStyle={{ borderRadius: '8px' }}
                             />
-                            <Bar dataKey="count" fill="#adfa1d" radius={[4, 4, 0, 0]} />
+                            <Bar dataKey={dataKey} fill={color} radius={[4, 4, 0, 0]} />
                         </BarChart>
                     </ResponsiveContainer>
                 </div>

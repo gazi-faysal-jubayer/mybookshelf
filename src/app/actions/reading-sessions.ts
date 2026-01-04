@@ -163,11 +163,28 @@ export async function updateProgress(bookId: string, currentPage: number) {
 }
 
 // Update total pages
+// Update total pages
 export async function updateTotalPages(bookId: string, totalPages: number) {
     const user = await getUser()
     if (!user) throw new Error("Not authenticated")
 
+    if (!totalPages || totalPages < 1) {
+        throw new Error("Total pages must be a positive number")
+    }
+
     const supabase = await createClient()
+
+    // First check if book exists and belongs to user
+    const { data: book, error: checkError } = await supabase
+        .from("books")
+        .select("id")
+        .eq("id", bookId)
+        .eq("user_id", user.id)
+        .single()
+
+    if (checkError || !book) {
+        throw new Error("Book not found or access denied")
+    }
 
     const { error } = await supabase
         .from("books")

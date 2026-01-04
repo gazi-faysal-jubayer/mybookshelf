@@ -31,7 +31,18 @@ export default async function AnalyticsPage() {
             />
 
             <div className="grid gap-6 md:grid-cols-2">
-                <ActivityChart data={stats.monthlyActivity} />
+                <ActivityChart
+                    data={stats.dailyActivity}
+                    title="Reading Activity (Last 30 Days)"
+                    description="Pages read per day"
+                    dataKey="pages"
+                />
+                <ActivityChart
+                    data={stats.monthlyActivity}
+                    title="Books Value"
+                    description="Books finished per month"
+                    dataKey="count"
+                />
                 <GenreChart data={stats.genreData} />
             </div>
         </div>
