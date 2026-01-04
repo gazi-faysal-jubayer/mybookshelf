@@ -9,6 +9,7 @@ import { CalendarIcon } from "lucide-react"
 import { format } from "date-fns"
 import { ImageUpload } from "@/components/upload/image-upload"
 import { UserMentionInput } from "@/components/ui/user-mention-input"
+import { ISBNScanner } from "@/components/books/isbn-scanner"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -46,12 +47,13 @@ const bookSchema = z.object({
     author: z.string().min(1, "Author is required"),
     isbn: z.string().optional(),
     publisher: z.string().optional(),
-    publication_year: z.coerce.number().min(868, "Year seems too old").max(new Date().getFullYear() + 5, "Year cannot be in the future").optional(),
+    publication_year: z.coerce.number().min(868, "Year seems too old").max(new Date().getFullYear() + 5, "Year cannot be in the future").optional().or(z.literal("")),
     cover_image: z.string().optional(),
-    genre: z.string().optional(), // In a real app, this should be an array
-    format: z.enum(["hardcover", "paperback", "ebook", "audiobook"]),
-    ownership_status: z.enum(["owned", "borrowed_from_others", "wishlist", "sold", "lost"]),
-    reading_status: z.enum(["to_read", "currently_reading", "completed", "abandoned"]),
+    genre: z.string().optional(),
+    total_pages: z.coerce.number().min(1).optional().or(z.literal("")),
+    format: z.enum(["hardcover", "paperback", "ebook", "audiobook"]).optional(),
+    ownership_status: z.enum(["owned", "borrowed_from_others", "wishlist", "sold", "lost"]).optional(),
+    reading_status: z.enum(["to_read", "currently_reading", "completed", "abandoned"]).optional(),
     rating: z.coerce.number().min(0).max(5).optional(),
     review: z.string().optional(),
     borrowed_info: z.object({
@@ -96,6 +98,17 @@ export function BookForm({ initialData, bookId }: BookFormProps) {
         defaultValues: initialData || defaultValues,
     })
 
+    const handleISBNData = (data: any) => {
+        if (data.title) form.setValue("title", data.title)
+        if (data.author) form.setValue("author", data.author)
+        if (data.isbn) form.setValue("isbn", data.isbn)
+        if (data.publisher) form.setValue("publisher", data.publisher)
+        if (data.publication_year) form.setValue("publication_year", data.publication_year)
+        if (data.total_pages) form.setValue("total_pages", data.total_pages)
+        if (data.genre) form.setValue("genre", data.genre)
+        if (data.cover_image) form.setValue("cover_image", data.cover_image)
+    }
+
     async function onSubmit(data: BookFormValues) {
         try {
             if (initialData && bookId) {
@@ -120,6 +133,11 @@ export function BookForm({ initialData, bookId }: BookFormProps) {
     return (
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                {/* ISBN Scanner - only show for new books */}
+                {!initialData && (
+                    <ISBNScanner onBookDataFetched={handleISBNData} />
+                )}
+
                 <FormField
                     control={form.control}
                     name="cover_image"

@@ -65,7 +65,7 @@ export function BookCard({ book }: BookCardProps) {
             <Card className="flex flex-col h-full overflow-hidden group">
                 {/* Cover Image Section */}
                 <Link href={`/dashboard/books/${book.id}`} className="block">
-                    <div className="relative aspect-[2/3] bg-muted">
+                    <div className="relative aspect-[3/4] bg-muted">
                         {book.cover_image ? (
                             <Image
                                 src={book.cover_image}
@@ -76,7 +76,7 @@ export function BookCard({ book }: BookCardProps) {
                             />
                         ) : (
                             <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-muted to-muted/50">
-                                <BookIcon className="h-16 w-16 text-muted-foreground/30" />
+                                <BookIcon className="h-12 w-12 text-muted-foreground/30" />
                             </div>
                         )}
                         {/* Rating overlay */}

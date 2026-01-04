@@ -133,7 +133,7 @@ export function LendBookModal({ bookId, isOpen, onClose }: LendBookModalProps) {
                                                 </Button>
                                             </FormControl>
                                         </PopoverTrigger>
-                                        <PopoverContent className="w-auto p-0" align="start">
+                                        <PopoverContent className="w-auto p-0 z-[100]" align="start" side="top" sideOffset={4}>
                                             <Calendar
                                                 mode="single"
                                                 selected={field.value}
