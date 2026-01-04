@@ -15,81 +15,80 @@
 
 @layer base {
   :root {
-    /* Day Mode - Creamy Paper */
-    --background: 35 30% 96%;
-    /* #F9F7F5 */
-    --foreground: 25 20% 20%;
-    /* #3D322B */
+    /* Light Academia / Refined Cozy Theme */
+    --background: 40 20% 97%;
+    /* #F9F8F6 - Soft Cream */
+    --foreground: 30 5% 18%;
+    /* #2D2D2D - Charcoal */
 
-    --card: 40 25% 98%;
-    /* #FCFAFA */
-    --card-foreground: 25 20% 20%;
+    --card: 40 30% 98%;
+    /* #FCFAFA - Paper White */
+    --card-foreground: 30 5% 18%;
 
-    --popover: 40 25% 98%;
-    --popover-foreground: 25 20% 20%;
+    --popover: 40 30% 98%;
+    --popover-foreground: 30 5% 18%;
 
-    --primary: 25 65% 45%;
-    /* #BD6B2D - Warm Terracotta */
-    --primary-foreground: 35 30% 96%;
+    --primary: 94 20% 38%;
+    /* #5F6F52 - Sage Green */
+    --primary-foreground: 40 20% 97%;
 
-    --secondary: 35 20% 90%;
-    /* #EBE8E3 */
-    --secondary-foreground: 25 20% 20%;
+    --secondary: 35 25% 88%;
+    /* #EBE4D5 - Beige */
+    --secondary-foreground: 30 5% 18%;
 
-    --muted: 35 20% 92%;
-    --muted-foreground: 25 10% 45%;
+    --muted: 35 15% 92%;
+    /* #EFEEEB */
+    --muted-foreground: 30 5% 45%;
 
-    --accent: 30 50% 85%;
-    /* Light warm accent */
-    --accent-foreground: 25 20% 20%;
+    --accent: 25 30% 70%;
+    /* #B9A394 - Soft Taupe */
+    --accent-foreground: 30 5% 18%;
 
-    --destructive: 0 70% 50%;
-    --destructive-foreground: 35 30% 96%;
+    --destructive: 0 55% 50%;
+    --destructive-foreground: 40 20% 97%;
 
-    --border: 30 15% 85%;
-    --input: 30 15% 85%;
-    --ring: 25 65% 45%;
+    --border: 35 15% 85%;
+    /* #E0DED9 */
+    --input: 35 15% 85%;
+    --ring: 94 20% 38%;
+    /* Sage Green Ring */
 
     --radius: 1rem;
   }
 
   .dark {
-    /* Night Mode - Deep Chocolate/Dark Academy */
-    --background: 28 35% 12%;
-    /* #291F19 - Deepest Brown */
-    --foreground: 35 25% 90%;
-    /* #EBE6DF - Cream Text */
+    /* Dark Mode - Deep Forest Library */
+    --background: 100 10% 10%;
+    /* #1A1C19 - Deep Green/Gray */
+    --foreground: 40 20% 90%;
+    /* #EBEBE6 */
 
-    --card: 28 30% 16%;
-    /* #352822 - Lighter Brown Card */
-    --card-foreground: 35 25% 90%;
+    --card: 100 8% 14%;
+    /* #222522 */
+    --card-foreground: 40 20% 90%;
 
-    --popover: 28 30% 16%;
-    --popover-foreground: 35 25% 90%;
+    --popover: 100 8% 14%;
+    --popover-foreground: 40 20% 90%;
 
-    --primary: 25 55% 55%;
-    /* #CD8552 - Muted Orange/Clay */
-    --primary-foreground: 28 35% 12%;
+    --primary: 94 30% 55%;
+    /* #768A67 - Lighter Sage */
+    --primary-foreground: 100 10% 10%;
 
-    --secondary: 28 25% 20%;
-    /* #40322A - Darker interaction elements */
-    --secondary-foreground: 35 25% 90%;
+    --secondary: 100 10% 18%;
+    --secondary-foreground: 40 20% 90%;
 
-    --muted: 28 20% 20%;
-    /* Muted background for tags/bars */
-    --muted-foreground: 35 15% 65%;
+    --muted: 100 10% 16%;
+    --muted-foreground: 100 5% 60%;
 
-    --accent: 25 45% 25%;
-    /* Rich accent for active states */
-    --accent-foreground: 35 25% 90%;
+    --accent: 30 20% 40%;
+    --accent-foreground: 40 20% 90%;
 
-    --destructive: 0 60% 40%;
-    --destructive-foreground: 35 25% 90%;
+    --destructive: 0 50% 40%;
+    --destructive-foreground: 40 20% 90%;
 
-    --border: 28 25% 22%;
-    /* Subtle brown borders */
-    --input: 28 25% 22%;
-    --ring: 25 55% 55%;
+    --border: 100 10% 20%;
+    --input: 100 10% 20%;
+    --ring: 94 30% 55%;
   }
 }
 

@@ -98,7 +98,7 @@ export async function addReadingSession(bookId: string, data: AddSessionData) {
             session_date: data.session_date?.toISOString().split("T")[0] || new Date().toISOString().split("T")[0],
             start_page: data.start_page,
             end_page: data.end_page,
-            pages_read: data.pages_read,
+            // pages_read is generated automatically by DB
             time_spent_minutes: data.time_spent_minutes,
             notes: data.notes,
             mood: data.mood,
