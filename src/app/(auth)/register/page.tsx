@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import NextImage from "next/image"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -117,7 +118,13 @@ export default function RegisterPage() {
     }
 
     return (
-        <Card className="w-full cozy-card">
+        <Card className="w-full cozy-card relative overflow-hidden">
+            <div className="absolute top-0 left-0 -scale-x-100 opacity-10 pointer-events-none">
+                <NextImage src="/assets/decorations/decoration_corner_flourish.png" alt="" width={150} height={150} />
+            </div>
+            <div className="absolute top-4 right-4 opacity-5 pointer-events-none">
+                <NextImage src="/assets/decorations/decoration_star_doodle.png" alt="" width={40} height={40} />
+            </div>
             <CardHeader className="space-y-1 text-center">
                 <div className="mx-auto w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-2">
                     <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Source+Sans+3:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -15,80 +17,71 @@
 
 @layer base {
   :root {
-    /* Light Academia / Refined Cozy Theme */
-    --background: 40 20% 97%;
-    /* #F9F8F6 - Soft Cream */
-    --foreground: 30 5% 18%;
-    /* #2D2D2D - Charcoal */
+    /* Royal Light Theme (optional, but focusing on Royal Dark) */
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
 
-    --card: 40 30% 98%;
-    /* #FCFAFA - Paper White */
-    --card-foreground: 30 5% 18%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
 
-    --popover: 40 30% 98%;
-    --popover-foreground: 30 5% 18%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
 
-    --primary: 94 20% 38%;
-    /* #5F6F52 - Sage Green */
-    --primary-foreground: 40 20% 97%;
+    --primary: 45 60% 50%;
+    /* Royal Gold */
+    --primary-foreground: 0 0% 98%;
 
-    --secondary: 35 25% 88%;
-    /* #EBE4D5 - Beige */
-    --secondary-foreground: 30 5% 18%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
 
-    --muted: 35 15% 92%;
-    /* #EFEEEB */
-    --muted-foreground: 30 5% 45%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
 
-    --accent: 25 30% 70%;
-    /* #B9A394 - Soft Taupe */
-    --accent-foreground: 30 5% 18%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
 
-    --destructive: 0 55% 50%;
-    --destructive-foreground: 40 20% 97%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 35 15% 85%;
-    /* #E0DED9 */
-    --input: 35 15% 85%;
-    --ring: 94 20% 38%;
-    /* Sage Green Ring */
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 45 60% 50%;
 
-    --radius: 1rem;
+    --radius: 0.5rem;
   }
 
   .dark {
-    /* Dark Mode - Deep Forest Library */
-    --background: 100 10% 10%;
-    /* #1A1C19 - Deep Green/Gray */
-    --foreground: 40 20% 90%;
-    /* #EBEBE6 */
+    /* Royal Dark Theme */
+    --background: 224 71% 4%;
+    /* #020617 - Deepest Royal Navy/Black */
+    --foreground: 0 0% 98%;
 
-    --card: 100 8% 14%;
-    /* #222522 */
-    --card-foreground: 40 20% 90%;
+    --card: 222 47% 11%;
+    /* #0F172A - Rich Navy */
+    --card-foreground: 0 0% 98%;
 
-    --popover: 100 8% 14%;
-    --popover-foreground: 40 20% 90%;
+    --popover: 222 47% 11%;
+    --popover-foreground: 0 0% 98%;
 
-    --primary: 94 30% 55%;
-    /* #768A67 - Lighter Sage */
-    --primary-foreground: 100 10% 10%;
+    --primary: 45 93% 47%;
+    /* #EAB308 - Royal Gold/Amber */
+    --primary-foreground: 222 47% 11%;
 
-    --secondary: 100 10% 18%;
-    --secondary-foreground: 40 20% 90%;
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 0 0% 98%;
 
-    --muted: 100 10% 16%;
-    --muted-foreground: 100 5% 60%;
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
 
-    --accent: 30 20% 40%;
-    --accent-foreground: 40 20% 90%;
+    --accent: 217 33% 17%;
+    --accent-foreground: 0 0% 98%;
 
-    --destructive: 0 50% 40%;
-    --destructive-foreground: 40 20% 90%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 100 10% 20%;
-    --input: 100 10% 20%;
-    --ring: 94 30% 55%;
+    --border: 217 33% 20%;
+    --input: 217 33% 20%;
+    --ring: 45 93% 47%;
   }
 }
 
@@ -99,6 +92,7 @@
 
   body {
     @apply bg-background text-foreground;
+    font-family: 'Source Sans 3', system-ui, sans-serif;
   }
 
   h1,
@@ -107,7 +101,7 @@
   h4,
   h5,
   h6 {
-    @apply font-serif;
+    font-family: 'Playfair Display', serif;
   }
 }
 
