@@ -39,15 +39,19 @@ interface BookActionsBarProps {
     book: {
         id: string
         title: string
+        pages: number | null
+        current_page: number | null
         reading_status: string
-        total_pages: number | null
+        reading_started_at: string | null
+        reading_finished_at: string | null
     }
 }
 
 export function BookActionsBar({ book }: BookActionsBarProps) {
     const router = useRouter()
     const [isDeleting, setIsDeleting] = useState(false)
-    const [isUpdating, setIsUpdating] = useState(false)
+    const [isStarting, setIsStarting] = useState(false)
+    const [isFinishing, setIsFinishing] = useState(false)
 
     const handleDelete = async () => {
         setIsDeleting(true)
@@ -63,26 +67,26 @@ export function BookActionsBar({ book }: BookActionsBarProps) {
     }
 
     const handleStartReading = async () => {
-        setIsUpdating(true)
+        setIsStarting(true)
         try {
-            await startReading(book.id, book.total_pages || undefined)
+            await startReading(book.id, book.pages || undefined)
             toast.success("Started reading! Track your progress now.")
         } catch {
             toast.error("Failed to start reading")
         } finally {
-            setIsUpdating(false)
+            setIsStarting(false)
         }
     }
 
     const handleFinishReading = async () => {
-        setIsUpdating(true)
+        setIsFinishing(true)
         try {
             await finishReading(book.id)
             toast.success("Congratulations on finishing the book!")
         } catch {
             toast.error("Failed to mark as finished")
         } finally {
-            setIsUpdating(false)
+            setIsFinishing(false)
         }
     }
 
@@ -105,16 +109,28 @@ export function BookActionsBar({ book }: BookActionsBarProps) {
         <div className="flex flex-wrap gap-2">
             {/* Primary Action based on reading status */}
             {book.reading_status === "to_read" && (
-                <Button onClick={handleStartReading} disabled={isUpdating}>
-                    <Play className="h-4 w-4 mr-2" />
-                    Start Reading
+                <Button onClick={handleStartReading} disabled={isStarting}>
+                    {isStarting ? (
+                        "Starting..."
+                    ) : (
+                        <>
+                            <Play className="h-4 w-4 mr-2" />
+                            Start Reading
+                        </>
+                    )}
                 </Button>
             )}
 
             {book.reading_status === "currently_reading" && (
-                <Button onClick={handleFinishReading} disabled={isUpdating}>
-                    <CheckCircle className="h-4 w-4 mr-2" />
-                    Mark as Finished
+                <Button onClick={handleFinishReading} disabled={isFinishing}>
+                    {isFinishing ? (
+                        "Updating..."
+                    ) : (
+                        <>
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                            Mark as Finished
+                        </>
+                    )}
                 </Button>
             )}
 

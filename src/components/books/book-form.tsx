@@ -50,7 +50,7 @@ const bookSchema = z.object({
     publication_year: z.coerce.number().optional().or(z.literal("")),
     cover_image: z.string().optional().or(z.literal("")),
     genre: z.string().optional().or(z.literal("")),
-    total_pages: z.coerce.number().min(1).optional().or(z.literal("")),
+    pages: z.coerce.number().min(1).optional().or(z.literal("")),
     format: z.enum(["hardcover", "paperback", "ebook", "audiobook", "mass_market", "board_book", "other"]).optional().or(z.literal("")),
     ownership_status: z.enum(["owned", "borrowed_from_others", "wishlist", "sold", "lost", "donated"]).optional().or(z.literal("")),
     reading_status: z.enum(["to_read", "currently_reading", "completed", "abandoned", "re_reading"]).optional().or(z.literal("")),
@@ -104,7 +104,7 @@ export function BookForm({ initialData, bookId }: BookFormProps) {
         if (data.isbn) form.setValue("isbn", data.isbn)
         if (data.publisher) form.setValue("publisher", data.publisher)
         if (data.publication_year) form.setValue("publication_year", data.publication_year)
-        if (data.total_pages) form.setValue("total_pages", data.total_pages)
+        if (data.total_pages) form.setValue("pages", data.total_pages)
         if (data.genre) form.setValue("genre", data.genre)
         if (data.cover_image) form.setValue("cover_image", data.cover_image)
     }

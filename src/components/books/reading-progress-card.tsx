@@ -37,7 +37,7 @@ interface ReadingProgressCardProps {
     book: {
         id: string
         title: string
-        total_pages: number | null
+        pages: number | null
         current_page: number | null
         reading_status: string
         reading_started_at: string | null
@@ -53,7 +53,7 @@ export function ReadingProgressCard({ book }: ReadingProgressCardProps) {
     const [isLoading, setIsLoading] = useState(false)
 
     const currentPage = book.current_page || 0
-    const totalPages = book.total_pages || 0
+    const totalPages = book.pages || 0
     const progress = totalPages > 0 ? Math.round((currentPage / totalPages) * 100) : 0
 
     const handleUpdateTotalPages = async (e: React.FormEvent<HTMLFormElement>) => {

@@ -43,7 +43,7 @@ export async function startReading(bookId: string, totalPages?: number) {
     }
 
     if (totalPages) {
-        updateData.total_pages = totalPages
+        updateData.pages = totalPages
     }
 
     const { error } = await supabase
@@ -70,7 +70,7 @@ export async function addReadingSession(bookId: string, data: AddSessionData) {
     // Get current book data
     const { data: book } = await supabase
         .from("books")
-        .select("current_page, total_pages, reading_started_at")
+        .select("current_page, pages, reading_started_at")
         .eq("id", bookId)
         .eq("user_id", user.id)
         .single()
@@ -107,7 +107,7 @@ export async function addReadingSession(bookId: string, data: AddSessionData) {
 
     // Update book's current page
     const newCurrentPage = data.end_page || (book.current_page || 0) + data.pages_read
-    const isFinished = book.total_pages && newCurrentPage >= book.total_pages
+    const isFinished = book.pages && newCurrentPage >= book.pages
 
     await supabase
         .from("books")
@@ -135,14 +135,14 @@ export async function updateProgress(bookId: string, currentPage: number) {
     // Get book data
     const { data: book } = await supabase
         .from("books")
-        .select("current_page, total_pages")
+        .select("current_page, pages")
         .eq("id", bookId)
         .eq("user_id", user.id)
         .single()
 
     if (!book) throw new Error("Book not found")
 
-    const isFinished = book.total_pages && currentPage >= book.total_pages
+    const isFinished = book.pages && currentPage >= book.pages
 
     const { error } = await supabase
         .from("books")
@@ -188,7 +188,7 @@ export async function updateTotalPages(bookId: string, totalPages: number) {
 
     const { error } = await supabase
         .from("books")
-        .update({ total_pages: totalPages })
+        .update({ pages: totalPages })
         .eq("id", bookId)
         .eq("user_id", user.id)
 
@@ -209,7 +209,7 @@ export async function finishReading(bookId: string, rating?: number) {
     // Get book's total pages to set current_page
     const { data: book } = await supabase
         .from("books")
-        .select("total_pages")
+        .select("pages")
         .eq("id", bookId)
         .eq("user_id", user.id)
         .single()
@@ -219,8 +219,8 @@ export async function finishReading(bookId: string, rating?: number) {
         reading_finished_at: new Date().toISOString(),
     }
 
-    if (book?.total_pages) {
-        updateData.current_page = book.total_pages
+    if (book?.pages) {
+        updateData.current_page = book.pages
     }
 
     if (rating) {

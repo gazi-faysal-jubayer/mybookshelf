@@ -130,7 +130,7 @@ export default async function BookPage({ params }: { params: { id: string } }) {
                                             <div className="capitalize">{book.format || "-"}</div>
 
                                             <div className="text-muted-foreground">Pages</div>
-                                            <div>{book.total_pages || "-"}</div>
+                                            <div>{book.pages || "-"}</div>
 
                                             <div className="text-muted-foreground">Language</div>
                                             <div>{book.language || "-"}</div>

@@ -117,8 +117,8 @@ export function BookDetailHeader({ book }: BookDetailHeaderProps) {
                         <Layers className="h-4 w-4" />
                         <div className="flex items-center">
                             <InlineEdit
-                                value={book.total_pages}
-                                onSave={(val) => handleUpdate("total_pages", parseInt(val))}
+                                value={book.pages}
+                                onSave={(val) => handleUpdate("pages", parseInt(val))}
                                 type="number"
                                 className="font-medium"
                                 label="Pages"
