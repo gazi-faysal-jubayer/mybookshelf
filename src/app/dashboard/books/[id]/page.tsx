@@ -16,6 +16,7 @@ import { ReadingSessionsList } from "@/components/books/reading-sessions-list"
 import { BookReviewSection } from "@/components/books/book-review-section"
 import { BookDetailHeader } from "@/components/books/book-detail-header"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { QuickNotesCard } from "@/components/books/quick-notes-card"
 
 export default async function BookPage({ params }: { params: { id: string } }) {
     const user = await getUser()
@@ -168,19 +169,7 @@ export default async function BookPage({ params }: { params: { id: string } }) {
                     {/* Right Column - Always Visible Context or Additional Info */}
                     <div className="space-y-6">
                         {/* Quick Notes */}
-                        <Card>
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-sm font-medium flex items-center justify-between">
-                                    Quick Notes
-                                    <PenLine className="h-4 w-4 text-muted-foreground" />
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <p className="text-sm italic text-muted-foreground min-h-[60px]">
-                                    {book.review || "No quick notes."}
-                                </p>
-                            </CardContent>
-                        </Card>
+                        <QuickNotesCard bookId={book.id} notes={book.notes} />
 
                         {/* Purchase/Ownership Info */}
                         <Card>
