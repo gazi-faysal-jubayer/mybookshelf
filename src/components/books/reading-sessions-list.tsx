@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { toast } from "sonner"
 import { deleteReadingSession } from "@/app/actions/reading-sessions"
+import { AddReadingSessionDialog } from "./add-reading-session-dialog"
 import { format } from "date-fns"
 
 interface ReadingSession {
@@ -84,7 +85,8 @@ export function ReadingSessionsList({ sessions, bookId }: ReadingSessionsListPro
                     <div className="text-center py-6 text-muted-foreground">
                         <BookOpen className="h-10 w-10 mx-auto mb-2 opacity-50" />
                         <p>No reading sessions logged yet.</p>
-                        <p className="text-sm">Use the "Log Session" button to track your progress!</p>
+                        <p className="text-sm mb-4">Use the "Log Session" button to track your progress!</p>
+                        <AddReadingSessionDialog bookId={bookId} />
                     </div>
                 </CardContent>
             </Card>
@@ -93,15 +95,18 @@ export function ReadingSessionsList({ sessions, bookId }: ReadingSessionsListPro
 
     return (
         <Card>
-            <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                    <Clock className="h-5 w-5" />
-                    Reading Sessions
-                </CardTitle>
-                <CardDescription>
-                    {sessions.length} sessions • {totalPagesRead} pages read
-                    {totalTimeSpent > 0 && ` • ${Math.round(totalTimeSpent / 60)}h ${totalTimeSpent % 60}m total`}
-                </CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <div className="space-y-1">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                        <Clock className="h-5 w-5" />
+                        Reading Sessions
+                    </CardTitle>
+                    <CardDescription>
+                        {sessions.length} sessions • {totalPagesRead} pages read
+                        {totalTimeSpent > 0 && ` • ${Math.round(totalTimeSpent / 60)}h ${totalTimeSpent % 60}m total`}
+                    </CardDescription>
+                </div>
+                <AddReadingSessionDialog bookId={bookId} />
             </CardHeader>
             <CardContent>
                 <div className="space-y-3">

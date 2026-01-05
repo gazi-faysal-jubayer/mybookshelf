@@ -2,6 +2,19 @@
 
 import { createClient, getUser } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
+import * as fs from 'fs';
+import * as path from 'path';
+
+function logToFile(message: string, data?: any) {
+    const logPath = path.join(process.cwd(), 'server-debug.log');
+    const timestamp = new Date().toISOString();
+    const logMessage = `[${timestamp}] ${message} ${data ? JSON.stringify(data, null, 2) : ''}\n`;
+    try {
+        fs.appendFileSync(logPath, logMessage);
+    } catch (e) {
+        console.error("Failed to write to log file", e);
+    }
+}
 
 export interface ReadingSession {
     id: string
@@ -11,7 +24,7 @@ export interface ReadingSession {
     start_page: number | null
     end_page: number | null
     pages_read: number
-    time_spent_minutes: number | null
+    duration_minutes: number | null
     notes: string | null
     mood: string | null
     session_rating: number | null
@@ -62,95 +75,115 @@ export async function startReading(bookId: string, totalPages?: number) {
 
 // Add a reading session
 export async function addReadingSession(bookId: string, data: AddSessionData) {
-    const user = await getUser()
-    if (!user) throw new Error("Not authenticated")
+    logToFile("Adding reading session START", { bookId, data })
+    try {
+        const user = await getUser()
+        if (!user) {
+            logToFile("addReadingSession: User not authenticated")
+            throw new Error("Not authenticated")
+        }
+        logToFile("addReadingSession: User authenticated", { userId: user.id })
 
-    const supabase = await createClient()
+        const supabase = await createClient()
 
-    // Get current book data
-    const { data: book } = await supabase
-        .from("books")
-        .select("title, author, cover_image, current_page, pages, reading_started_at")
-        .eq("id", bookId)
-        .eq("user_id", user.id)
-        .single()
-
-    if (!book) throw new Error("Book not found")
-
-    // If reading hasn't started yet, start it
-    if (!book.reading_started_at) {
-        await supabase
+        // Get current book data
+        const { data: book, error: bookError } = await supabase
             .from("books")
-            .update({
-                reading_status: "currently_reading",
-                reading_started_at: new Date().toISOString(),
-            })
+            .select("title, author, cover_image, current_page, pages, reading_started_at")
             .eq("id", bookId)
             .eq("user_id", user.id)
-    }
+            .single()
 
-    // Insert reading session
-    const { data: session, error: sessionError } = await supabase
-        .from("reading_sessions")
-        .insert({
+        if (bookError || !book) {
+            logToFile("addReadingSession: Book not found error", { bookError, bookId, userId: user.id })
+            throw new Error("Book not found")
+        }
+
+        // If reading hasn't started yet, start it
+        if (!book.reading_started_at) {
+            await supabase
+                .from("books")
+                .update({
+                    reading_status: "currently_reading",
+                    reading_started_at: new Date().toISOString(),
+                })
+                .eq("id", bookId)
+                .eq("user_id", user.id)
+        }
+
+        const insertData = {
             book_id: bookId,
             user_id: user.id,
             session_date: data.session_date?.toISOString().split("T")[0] || new Date().toISOString().split("T")[0],
             start_page: data.start_page,
             end_page: data.end_page,
-            // pages_read is generated automatically by DB
-            time_spent_minutes: data.time_spent_minutes,
+            pages_read: data.pages_read,
+            duration_minutes: data.time_spent_minutes,
             notes: data.notes,
             mood: data.mood,
-            session_rating: data.session_rating,
-        })
-        .select()
-        .single()
-
-    if (sessionError) throw new Error(sessionError.message)
-
-    // Create feed post (optimistic - don't fail session if this fails)
-    try {
-        const { error: postError } = await supabase.from("posts").insert({
-            user_id: user.id,
-            type: "reading_session",
-            content: data.notes || `Read ${data.pages_read} pages of ${book.title}`,
-            metadata: {
-                bookId: bookId,
-                bookTitle: book.title,
-                bookAuthor: book.author,
-                bookCover: book.cover_image,
-                pagesRead: data.pages_read,
-                sessionId: session.id,
-                mood: data.mood
-            }
-        })
-
-        if (postError) {
-            console.error("Failed to create feed post:", postError)
         }
-    } catch (error) {
-        console.error("Error creating feed post:", error)
+        logToFile("Inserting session:", insertData)
+
+        // Insert reading session
+        const { data: session, error: sessionError } = await supabase
+            .from("reading_sessions")
+            .insert(insertData)
+            .select()
+            .single()
+
+        if (sessionError) {
+            logToFile("Session insert error:", sessionError)
+            throw new Error(sessionError.message)
+        }
+
+        logToFile("Session inserted successfully", session)
+
+        // Create feed post (optimistic - don't fail session if this fails)
+        try {
+            const { error: postError } = await supabase.from("posts").insert({
+                user_id: user.id,
+                type: "reading_session",
+                content: data.notes || `Read ${data.pages_read} pages of ${book.title}`,
+                metadata: {
+                    bookId: bookId,
+                    bookTitle: book.title,
+                    bookAuthor: book.author,
+                    bookCover: book.cover_image,
+                    pagesRead: data.pages_read,
+                    sessionId: session.id,
+                    mood: data.mood
+                }
+            })
+
+            if (postError) {
+                logToFile("Failed to create feed post:", postError)
+            }
+        } catch (error) {
+            logToFile("Error creating feed post:", error)
+        }
+
+        // Update book's current page
+        const newCurrentPage = data.end_page || (book.current_page || 0) + data.pages_read
+        const isFinished = book.pages && newCurrentPage >= book.pages
+
+        await supabase
+            .from("books")
+            .update({
+                current_page: newCurrentPage,
+                reading_status: isFinished ? "completed" : "currently_reading",
+                reading_finished_at: isFinished ? new Date().toISOString() : null,
+            })
+            .eq("id", bookId)
+            .eq("user_id", user.id)
+
+        revalidatePath(`/dashboard/books/${bookId}`)
+        revalidatePath("/dashboard")
+
+        return { success: true }
+    } catch (e) {
+        logToFile("Top level error in addReadingSession:", e)
+        throw e
     }
-
-    // Update book's current page
-    const newCurrentPage = data.end_page || (book.current_page || 0) + data.pages_read
-    const isFinished = book.pages && newCurrentPage >= book.pages
-
-    await supabase
-        .from("books")
-        .update({
-            current_page: newCurrentPage,
-            reading_status: isFinished ? "completed" : "currently_reading",
-            reading_finished_at: isFinished ? new Date().toISOString() : null,
-        })
-        .eq("id", bookId)
-        .eq("user_id", user.id)
-
-    revalidatePath(`/dashboard/books/${bookId}`)
-    revalidatePath("/dashboard")
-
-    return { success: true }
 }
 
 // Update progress (quick update)
@@ -317,8 +350,8 @@ export async function getReadingStats(bookId: string) {
     }
 
     const totalPagesRead = sessions.reduce((sum, s) => sum + (s.pages_read || 0), 0)
-    const totalTimeSpent = sessions.reduce((sum, s) => sum + (s.time_spent_minutes || 0), 0)
-    const sessionsWithTime = sessions.filter((s) => s.time_spent_minutes)
+    const totalTimeSpent = sessions.reduce((sum, s) => sum + (s.duration_minutes || 0), 0)
+    const sessionsWithTime = sessions.filter((s) => s.duration_minutes)
 
     return {
         totalSessions: sessions.length,
