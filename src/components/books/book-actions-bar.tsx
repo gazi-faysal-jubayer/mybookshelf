@@ -32,8 +32,10 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { toast } from "sonner"
-import { deleteBook } from "@/app/actions/book"
+import { cn } from "@/lib/utils"
+import { deleteBook, toggleFavorite } from "@/app/actions/book"
 import { startReading, finishReading } from "@/app/actions/reading-sessions"
+import { LendBookModal } from "@/components/lending/lend-book-modal"
 
 interface BookActionsBarProps {
     book: {
@@ -44,6 +46,7 @@ interface BookActionsBarProps {
         reading_status: string
         reading_started_at: string | null
         reading_finished_at: string | null
+        is_favorite: boolean
     }
 }
 
@@ -52,6 +55,21 @@ export function BookActionsBar({ book }: BookActionsBarProps) {
     const [isDeleting, setIsDeleting] = useState(false)
     const [isStarting, setIsStarting] = useState(false)
     const [isFinishing, setIsFinishing] = useState(false)
+    const [isLendModalOpen, setIsLendModalOpen] = useState(false)
+    const [isFavorite, setIsFavorite] = useState(book.is_favorite)
+
+    const handleToggleFavorite = async () => {
+        // Optimistic update
+        const previousState = isFavorite
+        setIsFavorite(!isFavorite)
+        try {
+            await toggleFavorite(book.id)
+            toast.success(previousState ? "Removed from favorites" : "Added to favorites")
+        } catch {
+            setIsFavorite(previousState)
+            toast.error("Failed to update favorites")
+        }
+    }
 
     const handleDelete = async () => {
         setIsDeleting(true)
@@ -106,102 +124,109 @@ export function BookActionsBar({ book }: BookActionsBarProps) {
     }
 
     return (
-        <div className="flex flex-wrap gap-2">
-            {/* Primary Action based on reading status */}
-            {book.reading_status === "to_read" && (
-                <Button onClick={handleStartReading} disabled={isStarting}>
-                    {isStarting ? (
-                        "Starting..."
-                    ) : (
-                        <>
-                            <Play className="h-4 w-4 mr-2" />
-                            Start Reading
-                        </>
-                    )}
-                </Button>
-            )}
-
-            {book.reading_status === "currently_reading" && (
-                <Button onClick={handleFinishReading} disabled={isFinishing}>
-                    {isFinishing ? (
-                        "Updating..."
-                    ) : (
-                        <>
-                            <CheckCircle className="h-4 w-4 mr-2" />
-                            Mark as Finished
-                        </>
-                    )}
-                </Button>
-            )}
-
-            {book.reading_status === "completed" && (
-                <Button variant="secondary" disabled>
-                    <CheckCircle className="h-4 w-4 mr-2" />
-                    Completed
-                </Button>
-            )}
-
-            {/* Edit Button */}
-            <Button variant="outline" asChild>
-                <Link href={`/dashboard/books/${book.id}/edit`}>
-                    <Pencil className="h-4 w-4 mr-2" />
-                    Edit
-                </Link>
-            </Button>
-
-            {/* More Actions Dropdown */}
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button variant="outline">
-                        More Actions
+        <>
+            <div className="flex flex-wrap gap-2">
+                {/* Primary Action based on reading status */}
+                {book.reading_status === "to_read" && (
+                    <Button onClick={handleStartReading} disabled={isStarting}>
+                        {isStarting ? (
+                            "Starting..."
+                        ) : (
+                            <>
+                                <Play className="h-4 w-4 mr-2" />
+                                Start Reading
+                            </>
+                        )}
                     </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={handleShare}>
-                        <Share2 className="h-4 w-4 mr-2" />
-                        Share
-                    </DropdownMenuItem>
-                    <DropdownMenuItem disabled>
-                        <Heart className="h-4 w-4 mr-2" />
-                        Add to Favorites
-                    </DropdownMenuItem>
-                    <DropdownMenuItem disabled>
-                        <BookOpen className="h-4 w-4 mr-2" />
-                        Lend Book
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                            <DropdownMenuItem
-                                className="text-destructive focus:text-destructive"
-                                onSelect={(e) => e.preventDefault()}
-                            >
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Delete Book
-                            </DropdownMenuItem>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                            <AlertDialogHeader>
-                                <AlertDialogTitle>Delete "{book.title}"?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                    This action cannot be undone. This will permanently delete the book
-                                    and all associated reading sessions and reviews.
-                                </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                    onClick={handleDelete}
-                                    disabled={isDeleting}
-                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                )}
+
+                {book.reading_status === "currently_reading" && (
+                    <Button onClick={handleFinishReading} disabled={isFinishing}>
+                        {isFinishing ? (
+                            "Updating..."
+                        ) : (
+                            <>
+                                <CheckCircle className="h-4 w-4 mr-2" />
+                                Mark as Finished
+                            </>
+                        )}
+                    </Button>
+                )}
+
+                {book.reading_status === "completed" && (
+                    <Button variant="secondary" disabled>
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Completed
+                    </Button>
+                )}
+
+                {/* Edit Button */}
+                <Button variant="outline" asChild>
+                    <Link href={`/dashboard/books/${book.id}/edit`}>
+                        <Pencil className="h-4 w-4 mr-2" />
+                        Edit
+                    </Link>
+                </Button>
+
+                {/* More Actions Dropdown */}
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="outline">
+                            More Actions
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={handleShare}>
+                            <Share2 className="h-4 w-4 mr-2" />
+                            Share
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={handleToggleFavorite}>
+                            <Heart className={cn("h-4 w-4 mr-2", isFavorite && "fill-current text-red-500")} />
+                            {isFavorite ? "Remove from Favorites" : "Add to Favorites"}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setIsLendModalOpen(true)}>
+                            <BookOpen className="h-4 w-4 mr-2" />
+                            Lend Book
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <DropdownMenuItem
+                                    className="text-destructive focus:text-destructive"
+                                    onSelect={(e) => e.preventDefault()}
                                 >
-                                    {isDeleting ? "Deleting..." : "Delete"}
-                                </AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
-                </DropdownMenuContent>
-            </DropdownMenu>
-        </div>
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Delete Book
+                                </DropdownMenuItem>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Delete "{book.title}"?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This action cannot be undone. This will permanently delete the book
+                                        and all associated reading sessions and reviews.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                        onClick={handleDelete}
+                                        disabled={isDeleting}
+                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    >
+                                        {isDeleting ? "Deleting..." : "Delete"}
+                                    </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
+            <LendBookModal
+                bookId={book.id}
+                isOpen={isLendModalOpen}
+                onClose={() => setIsLendModalOpen(false)}
+            />
+        </>
     )
 }

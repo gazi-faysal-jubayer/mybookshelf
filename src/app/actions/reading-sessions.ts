@@ -2,6 +2,7 @@
 
 import { createClient, getUser } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
+import { createPost } from "@/app/actions/posts"
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -261,45 +262,101 @@ export async function updateTotalPages(bookId: string, totalPages: number) {
 }
 
 // Finish reading a book
-export async function finishReading(bookId: string, rating?: number) {
+export async function finishReading(bookId: string, rating?: number, review?: string) {
     const user = await getUser()
     if (!user) throw new Error("Not authenticated")
 
     const supabase = await createClient()
 
-    // Get book's total pages to set current_page
-    const { data: book } = await supabase
-        .from("books")
-        .select("pages")
-        .eq("id", bookId)
-        .eq("user_id", user.id)
-        .single()
+    try {
+        // 1. Get book details
+        const { data: book, error: bookError } = await supabase
+            .from("books")
+            .select("title, author, cover_image, pages, reading_started_at")
+            .eq("id", bookId)
+            .eq("user_id", user.id)
+            .single()
 
-    const updateData: any = {
-        reading_status: "completed",
-        reading_finished_at: new Date().toISOString(),
+        if (bookError || !book) throw new Error("Book not found")
+
+        // 2. Create Reading Journey (Archive)
+        const { data: journey, error: journeyError } = await supabase
+            .from("reading_journeys")
+            .insert({
+                user_id: user.id,
+                book_id: bookId,
+                status: 'completed',
+                started_at: book.reading_started_at,
+                finished_at: new Date().toISOString(),
+                rating: rating,
+                review: review,
+                visibility: 'public' // Default to public for now
+            })
+            .select('id')
+            .single()
+
+        if (journeyError) {
+            console.error("Failed to create journey:", journeyError)
+            // Continue anyway to mark book as finished, but this is bad.
+        } else {
+            // 3. Link existing sessions (where journey_id is null) to this journey
+            await supabase
+                .from("reading_sessions")
+                .update({ journey_id: journey.id })
+                .eq("book_id", bookId)
+                .eq("user_id", user.id)
+                .is("journey_id", null)
+
+            // 4. Link existing thoughts to this journey
+            await supabase
+                .from("reading_thoughts")
+                .update({ journey_id: journey.id })
+                .eq("book_id", bookId)
+                .eq("user_id", user.id)
+                .is("journey_id", null)
+        }
+
+        // 5. Update Book Status
+        const updateData: any = {
+            reading_status: "completed",
+            reading_finished_at: new Date().toISOString(),
+        }
+
+        if (book.pages) {
+            updateData.current_page = book.pages
+        }
+
+        if (rating) {
+            updateData.rating = rating
+        }
+
+        if (review) {
+            updateData.review = review // Assuming book table has review column, if not, it's just in journey
+        }
+
+        const { error: updateError } = await supabase
+            .from("books")
+            .update(updateData)
+            .eq("id", bookId)
+            .eq("user_id", user.id)
+
+        if (updateError) throw new Error(updateError.message)
+
+        // 6. Create Feed Post
+        await createPost({
+            content: `just finished reading "${book.title}" by ${book.author}!`,
+            visibility: "public",
+            bookId: bookId
+        }).catch(err => console.error("Failed to create completion post:", err))
+
+        revalidatePath(`/dashboard/books/${bookId}`)
+        revalidatePath("/dashboard")
+
+        return { success: true }
+    } catch (error) {
+        console.error("Finish reading error:", error)
+        throw error
     }
-
-    if (book?.pages) {
-        updateData.current_page = book.pages
-    }
-
-    if (rating) {
-        updateData.rating = rating
-    }
-
-    const { error } = await supabase
-        .from("books")
-        .update(updateData)
-        .eq("id", bookId)
-        .eq("user_id", user.id)
-
-    if (error) throw new Error(error.message)
-
-    revalidatePath(`/dashboard/books/${bookId}`)
-    revalidatePath("/dashboard")
-
-    return { success: true }
 }
 
 // Get reading sessions for a book

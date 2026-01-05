@@ -2,6 +2,7 @@
 
 import { createClient, getUser } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
+import { createPost } from "@/app/actions/posts"
 
 // Interface for reading thoughts (during-reading notes)
 export interface ReadingThought {
@@ -131,6 +132,29 @@ export async function addFinalReview(bookId: string, data: {
     }
 
     revalidatePath(`/dashboard/books/${bookId}`)
+
+    // Create Feed Post
+    if (data.is_public !== false) {
+        try {
+            // Get book details for the post
+            const { data: book } = await supabase
+                .from("books")
+                .select("title, author")
+                .eq("id", bookId)
+                .single()
+
+            if (book) {
+                const ratingStars = "⭐".repeat(data.rating || 5)
+                await createPost({
+                    content: `wrote a review for "${book.title}" by ${book.author}\n\n${ratingStars}\n\n${data.content.substring(0, 100)}${data.content.length > 100 ? "..." : ""}`,
+                    visibility: "public",
+                    bookId: bookId
+                })
+            }
+        } catch (e) {
+            console.error("Failed to create review post:", e)
+        }
+    }
 
     return { success: true }
 }

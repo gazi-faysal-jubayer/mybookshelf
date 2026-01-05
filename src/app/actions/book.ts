@@ -578,3 +578,41 @@ export async function respondToBookAddRequest(
         throw new Error(message)
     }
 }
+
+export async function toggleFavorite(bookId: string) {
+    try {
+        const user = await getUser()
+        if (!user) throw new Error("Unauthorized")
+
+        const supabase = await createClient()
+
+        // Get current status
+        const { data: book, error: fetchError } = await supabase
+            .from('books')
+            .select('is_favorite')
+            .eq('id', bookId)
+            .eq('user_id', user.id)
+            .single()
+
+        if (fetchError || !book) throw new Error("Book not found")
+
+        const newStatus = !book.is_favorite
+
+        const { error: updateError } = await supabase
+            .from('books')
+            .update({ is_favorite: newStatus })
+            .eq('id', bookId)
+            .eq('user_id', user.id)
+
+        if (updateError) throw new Error("Failed to update favorite status")
+
+        revalidatePath("/dashboard")
+        revalidatePath("/dashboard/books")
+        revalidatePath(`/dashboard/books/${bookId}`)
+
+        return { success: true, isFavorite: newStatus }
+    } catch (error) {
+        console.error("Failed to toggle favorite:", error)
+        throw error
+    }
+}
