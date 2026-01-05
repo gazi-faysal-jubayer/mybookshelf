@@ -3,6 +3,7 @@
 import { createClient, getUser } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 import { createPost } from "@/app/actions/posts"
+import { getActiveJourney, createNewJourney } from "@/app/actions/journeys"
 
 // Interface for reading thoughts (during-reading notes)
 export interface ReadingThought {
@@ -48,9 +49,19 @@ export async function addDuringReadingThought(bookId: string, data: {
 
     const supabase = await createClient()
 
+    // Get or create active journey
+    let activeJourney = await getActiveJourney(bookId)
+    if (!activeJourney) {
+        const result = await createNewJourney(bookId, 'public')
+        if (result.success && result.journeyId) {
+            activeJourney = await getActiveJourney(bookId)
+        }
+    }
+
     const { error } = await supabase.from("reading_thoughts").insert({
         book_id: bookId,
         user_id: user.id,
+        journey_id: activeJourney?.id || null,
         page_number: data.page_number,
         chapter: data.chapter,
         content: data.content,

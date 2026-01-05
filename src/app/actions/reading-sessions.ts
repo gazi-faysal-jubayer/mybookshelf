@@ -3,6 +3,7 @@
 import { createClient, getUser } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 import { createPost } from "@/app/actions/posts"
+import { createNewJourney, getActiveJourney } from "@/app/actions/journeys"
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -112,9 +113,25 @@ export async function addReadingSession(bookId: string, data: AddSessionData) {
                 .eq("user_id", user.id)
         }
 
+        // Get or create active journey
+        let activeJourney = await getActiveJourney(bookId)
+        if (!activeJourney) {
+            const result = await createNewJourney(bookId, 'public')
+            if (result.success && result.journeyId) {
+                activeJourney = await getActiveJourney(bookId)
+            }
+        }
+
+        if (!activeJourney) {
+            throw new Error("Failed to create or get active journey")
+        }
+
+        logToFile("Active journey found/created", { journeyId: activeJourney.id })
+
         const insertData = {
             book_id: bookId,
             user_id: user.id,
+            journey_id: activeJourney.id,
             session_date: data.session_date?.toISOString().split("T")[0] || new Date().toISOString().split("T")[0],
             start_page: data.start_page,
             end_page: data.end_page,
@@ -279,44 +296,30 @@ export async function finishReading(bookId: string, rating?: number, review?: st
 
         if (bookError || !book) throw new Error("Book not found")
 
-        // 2. Create Reading Journey (Archive)
-        const { data: journey, error: journeyError } = await supabase
-            .from("reading_journeys")
-            .insert({
-                user_id: user.id,
-                book_id: bookId,
-                status: 'completed',
-                started_at: book.reading_started_at,
-                finished_at: new Date().toISOString(),
-                rating: rating,
-                review: review,
-                visibility: 'public' // Default to public for now
-            })
-            .select('id')
-            .single()
-
-        if (journeyError) {
-            console.error("Failed to create journey:", journeyError)
-            // Continue anyway to mark book as finished, but this is bad.
-        } else {
-            // 3. Link existing sessions (where journey_id is null) to this journey
-            await supabase
-                .from("reading_sessions")
-                .update({ journey_id: journey.id })
-                .eq("book_id", bookId)
-                .eq("user_id", user.id)
-                .is("journey_id", null)
-
-            // 4. Link existing thoughts to this journey
-            await supabase
-                .from("reading_thoughts")
-                .update({ journey_id: journey.id })
-                .eq("book_id", bookId)
-                .eq("user_id", user.id)
-                .is("journey_id", null)
+        // 2. Get or create active journey
+        let activeJourney = await getActiveJourney(bookId)
+        if (!activeJourney) {
+            const result = await createNewJourney(bookId, 'public')
+            if (result.success && result.journeyId) {
+                activeJourney = await getActiveJourney(bookId)
+            }
         }
 
-        // 5. Update Book Status
+        // 3. Complete the active journey
+        if (activeJourney) {
+            await supabase
+                .from("reading_journeys")
+                .update({
+                    status: 'completed',
+                    finished_at: new Date().toISOString(),
+                    rating: rating,
+                    review: review,
+                })
+                .eq("id", activeJourney.id)
+                .eq("user_id", user.id)
+        }
+
+        // 4. Update Book Status
         const updateData: any = {
             reading_status: "completed",
             reading_finished_at: new Date().toISOString(),
@@ -342,7 +345,7 @@ export async function finishReading(bookId: string, rating?: number, review?: st
 
         if (updateError) throw new Error(updateError.message)
 
-        // 6. Create Feed Post
+        // 5. Create Feed Post
         await createPost({
             content: `just finished reading "${book.title}" by ${book.author}!`,
             visibility: "public",
