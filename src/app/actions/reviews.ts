@@ -90,44 +90,50 @@ export async function addFinalReview(bookId: string, data: {
 
     const supabase = await createClient()
 
-    // Check if a review already exists for this book by this user
+    // Get or create active journey
+    let activeJourney = await getActiveJourney(bookId)
+    if (!activeJourney) {
+        const result = await createNewJourney(bookId, 'public')
+        if (result.success && result.journeyId) {
+            activeJourney = await getActiveJourney(bookId)
+        }
+    }
+
+    // Check if a review already exists for this book by this user and journey
     const { data: existingReview } = await supabase
         .from("book_reviews")
         .select("id")
         .eq("book_id", bookId)
         .eq("user_id", user.id)
+        .eq("journey_id", activeJourney?.id || null)
         .single()
+
+    const reviewData = {
+        rating: data.rating || 5, // rating is required in existing schema
+        review_text: data.content,
+        contains_spoilers: data.contains_spoilers ?? false,
+        // New optional columns
+        title: data.title,
+        would_recommend: data.would_recommend,
+        is_public: data.is_public ?? true,
+        favorite_quotes: data.favorite_quotes,
+    }
 
     if (existingReview) {
         // Update existing review
         const { error } = await supabase
             .from("book_reviews")
-            .update({
-                rating: data.rating || 5, // rating is required in existing schema
-                review_text: data.content,
-                contains_spoilers: data.contains_spoilers ?? false,
-                // New optional columns
-                title: data.title,
-                would_recommend: data.would_recommend,
-                is_public: data.is_public ?? true,
-                favorite_quotes: data.favorite_quotes,
-            })
+            .update(reviewData)
             .eq("id", existingReview.id)
 
         if (error) throw new Error(error.message)
     } else {
-        // Insert new review
+        // Insert new review linked to journey
         const { error } = await supabase.from("book_reviews").insert({
             book_id: bookId,
             user_id: user.id,
-            rating: data.rating || 5, // rating is required in existing schema
-            review_text: data.content,
-            contains_spoilers: data.contains_spoilers ?? false,
-            // New optional columns
-            title: data.title,
-            would_recommend: data.would_recommend,
-            is_public: data.is_public ?? true,
-            favorite_quotes: data.favorite_quotes,
+            journey_id: activeJourney?.id || null,
+            ...reviewData,
         })
 
         if (error) throw new Error(error.message)

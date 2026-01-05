@@ -17,6 +17,7 @@ import { BookReviewSection } from "@/components/books/book-review-section"
 import { BookDetailHeader } from "@/components/books/book-detail-header"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { QuickNotesCard } from "@/components/books/quick-notes-card"
+import { ReadingTabContent } from "@/components/reading/reading-tab-content"
 
 export default async function BookPage({ params }: { params: { id: string } }) {
     const user = await getUser()
@@ -104,9 +105,8 @@ export default async function BookPage({ params }: { params: { id: string } }) {
                             )}
                         </TabsContent>
 
-                        <TabsContent value="reading" className="mt-0 space-y-6">
-                            <ReadingProgressCard book={book} />
-                            <ReadingSessionsList sessions={sessions || []} bookId={book.id} />
+                        <TabsContent value="reading" className="mt-0">
+                            <ReadingTabContent bookId={book.id} userId={user.id} book={book} />
                         </TabsContent>
 
                         <TabsContent value="review" className="mt-0 space-y-6">

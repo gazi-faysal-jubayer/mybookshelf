@@ -154,9 +154,15 @@ export function BookActionsBar({ book }: BookActionsBarProps) {
                 )}
 
                 {book.reading_status === "completed" && (
-                    <Button variant="secondary" disabled>
-                        <CheckCircle className="h-4 w-4 mr-2" />
-                        Completed
+                    <Button onClick={handleStartReading} disabled={isStarting} variant="default">
+                        {isStarting ? (
+                            "Starting..."
+                        ) : (
+                            <>
+                                <Play className="h-4 w-4 mr-2" />
+                                Start Again
+                            </>
+                        )}
                     </Button>
                 )}
 

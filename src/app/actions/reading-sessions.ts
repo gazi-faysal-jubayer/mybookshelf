@@ -3,7 +3,7 @@
 import { createClient, getUser } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 import { createPost } from "@/app/actions/posts"
-import { createNewJourney, getActiveJourney } from "@/app/actions/journeys"
+import { getActiveJourney, createNewJourney } from "@/app/actions/journeys"
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -45,7 +45,7 @@ export interface AddSessionData {
 }
 
 // Start reading a book
-export async function startReading(bookId: string, totalPages?: number) {
+export async function startReading(bookId: string, totalPages?: number, visibility?: 'public' | 'connections' | 'private') {
     const user = await getUser()
     if (!user) throw new Error("Not authenticated")
 
@@ -68,6 +68,9 @@ export async function startReading(bookId: string, totalPages?: number) {
         .eq("user_id", user.id)
 
     if (error) throw new Error(error.message)
+
+    // Create new journey for this reading session
+    await createNewJourney(bookId, visibility || 'public')
 
     revalidatePath(`/dashboard/books/${bookId}`)
     revalidatePath("/dashboard")
@@ -279,7 +282,7 @@ export async function updateTotalPages(bookId: string, totalPages: number) {
 }
 
 // Finish reading a book
-export async function finishReading(bookId: string, rating?: number, review?: string) {
+export async function finishReading(bookId: string, rating?: number, review?: string, visibility?: 'public' | 'connections' | 'private') {
     const user = await getUser()
     if (!user) throw new Error("Not authenticated")
 
@@ -299,7 +302,7 @@ export async function finishReading(bookId: string, rating?: number, review?: st
         // 2. Get or create active journey
         let activeJourney = await getActiveJourney(bookId)
         if (!activeJourney) {
-            const result = await createNewJourney(bookId, 'public')
+            const result = await createNewJourney(bookId, visibility || 'public')
             if (result.success && result.journeyId) {
                 activeJourney = await getActiveJourney(bookId)
             }
@@ -314,6 +317,7 @@ export async function finishReading(bookId: string, rating?: number, review?: st
                     finished_at: new Date().toISOString(),
                     rating: rating,
                     review: review,
+                    visibility: visibility || activeJourney.visibility || 'public'
                 })
                 .eq("id", activeJourney.id)
                 .eq("user_id", user.id)
@@ -345,12 +349,14 @@ export async function finishReading(bookId: string, rating?: number, review?: st
 
         if (updateError) throw new Error(updateError.message)
 
-        // 5. Create Feed Post
-        await createPost({
-            content: `just finished reading "${book.title}" by ${book.author}!`,
-            visibility: "public",
-            bookId: bookId
-        }).catch(err => console.error("Failed to create completion post:", err))
+        // 5. Create Feed Post (only if public)
+        if (!visibility || visibility === 'public') {
+            await createPost({
+                content: `just finished reading \"${book.title}\" by ${book.author}!`,
+                visibility: "public",
+                bookId: bookId
+            }).catch(err => console.error("Failed to create completion post:", err))
+        }
 
         revalidatePath(`/dashboard/books/${bookId}`)
         revalidatePath("/dashboard")
