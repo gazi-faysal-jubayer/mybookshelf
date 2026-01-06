@@ -117,11 +117,6 @@ export function JourneyTimeline({
         onJourneySelect?.(journey)
     }
 
-    const handleMenuClick = (e: React.MouseEvent, journey: JourneyWithProgress) => {
-        e.stopPropagation()
-        // Menu will be handled by JourneyCardMenu component
-    }
-
     const filteredJourneys = journeys.filter(j => {
         if (filter === 'all') return true
         return j.status === filter
@@ -204,23 +199,23 @@ export function JourneyTimeline({
 
                             {/* Journey Cards */}
                             {filteredJourneys.map((journey) => (
-                                <JourneyCardMenu
-                                    key={journey.id}
-                                    journey={journey}
-                                    isOwner={isOwner}
-                                    onUpdate={loadJourneys}
-                                >
-                                    <div>
-                                        <JourneyTimelineCard
+                                <div key={journey.id} className="relative">
+                                    <JourneyTimelineCard
+                                        journey={journey}
+                                        isActive={selectedJourneyId === journey.id}
+                                        progress={journey.progress}
+                                        totalPages={totalPages}
+                                        onClick={() => handleSelectJourney(journey)}
+                                    />
+                                    {/* Menu positioned on top of the card */}
+                                    <div className="absolute top-3 right-3 z-10">
+                                        <JourneyCardMenu
                                             journey={journey}
-                                            isActive={selectedJourneyId === journey.id}
-                                            progress={journey.progress}
-                                            totalPages={totalPages}
-                                            onClick={() => handleSelectJourney(journey)}
-                                            onMenuClick={(e) => handleMenuClick(e, journey)}
+                                            isOwner={isOwner}
+                                            onUpdate={loadJourneys}
                                         />
                                     </div>
-                                </JourneyCardMenu>
+                                </div>
                             ))}
 
                             {/* Empty State - No filtered journeys */}

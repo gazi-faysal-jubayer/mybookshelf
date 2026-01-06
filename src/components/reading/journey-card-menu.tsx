@@ -43,17 +43,17 @@ import {
     Eye,
     Globe,
     Users,
-    PlayCircle
+    PlayCircle,
+    MoreVertical
 } from "lucide-react"
 
 interface JourneyCardMenuProps {
     journey: ReadingJourney
     isOwner: boolean
-    children: React.ReactNode
     onUpdate?: () => void
 }
 
-export function JourneyCardMenu({ journey, isOwner, children, onUpdate }: JourneyCardMenuProps) {
+export function JourneyCardMenu({ journey, isOwner, onUpdate }: JourneyCardMenuProps) {
     const [showRenameDialog, setShowRenameDialog] = useState(false)
     const [showDeleteDialog, setShowDeleteDialog] = useState(false)
     const [newName, setNewName] = useState(journey.session_name || "")
@@ -153,7 +153,14 @@ export function JourneyCardMenu({ journey, isOwner, children, onUpdate }: Journe
         <>
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                    {children}
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0 opacity-60 hover:opacity-100 bg-background/80 hover:bg-background"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <MoreVertical className="h-4 w-4" />
+                    </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
                     {/* Rename */}

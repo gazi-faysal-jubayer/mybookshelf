@@ -3,8 +3,7 @@
 import { ReadingJourney } from "@/app/actions/journeys"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { MoreVertical, Globe, Users, Lock, BookOpen, CheckCircle2, PauseCircle, Star } from "lucide-react"
+import { Globe, Users, Lock, BookOpen, CheckCircle2, PauseCircle, Star } from "lucide-react"
 import { format, formatDistanceToNow, differenceInDays } from "date-fns"
 import { cn } from "@/lib/utils"
 
@@ -14,7 +13,6 @@ interface JourneyTimelineCardProps {
     progress: number
     totalPages?: number
     onClick: () => void
-    onMenuClick: (e: React.MouseEvent) => void
 }
 
 // Circular Progress Component
@@ -83,8 +81,7 @@ export function JourneyTimelineCard({
     isActive,
     progress,
     totalPages,
-    onClick,
-    onMenuClick
+    onClick
 }: JourneyTimelineCardProps) {
     const getStatusIcon = () => {
         switch (journey.status) {
@@ -163,14 +160,8 @@ export function JourneyTimelineCard({
                         {getStatusIcon()}
                         {journey.status === 'active' ? 'Reading' : journey.status}
                     </Badge>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 w-6 p-0 opacity-60 hover:opacity-100"
-                        onClick={onMenuClick}
-                    >
-                        <MoreVertical className="h-4 w-4" />
-                    </Button>
+                    {/* Menu button is now rendered separately via JourneyCardMenu */}
+                    <div className="w-6 h-6" /> {/* Spacer for menu button */}
                 </div>
                 <h3 className="font-semibold text-sm line-clamp-1 mt-1.5">
                     {journey.session_name || "Reading Journey"}
