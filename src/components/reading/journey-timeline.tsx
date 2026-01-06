@@ -55,11 +55,9 @@ export function JourneyTimeline({
     }, [bookId, userId])
 
     const loadJourneys = async () => {
-        console.log("loadJourneys called for bookId:", bookId, "userId:", userId)
         setIsLoading(true)
         try {
             const data = await getAllJourneys(bookId, userId)
-            console.log("loadJourneys received data:", data?.length || 0, "journeys")
 
             // Calculate progress for each journey
             const supabase = createClient()
@@ -248,7 +246,6 @@ export function JourneyTimeline({
                 <div className="text-center py-8 text-muted-foreground">
                     <p>No reading journeys yet</p>
                     <p className="text-sm mt-2">Click the "+ New Journey" card to start!</p>
-                    <p className="text-xs mt-4 text-red-500">Debug: bookId={bookId}, userId={userId}</p>
                 </div>
             )}
 

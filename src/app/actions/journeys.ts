@@ -182,16 +182,6 @@ export async function getAllJourneys(
             console.error("getAllJourneys: No authenticated user", authError?.message)
             return []
         }
-        
-        console.log("getAllJourneys called - bookId:", bookId, "filterUserId:", userId, "auth user:", user.id)
-
-        // First, try a simple query without joins to test RLS
-        const { data: testData, error: testError } = await supabase
-            .from("reading_journeys")
-            .select("id, status, session_name")
-            .eq("book_id", bookId)
-        
-        console.log("Test query (no joins):", testData?.length || 0, "journeys, error:", testError?.message || "none")
 
         // Query journeys - RLS will filter based on auth.uid()
         let query = supabase
@@ -199,7 +189,6 @@ export async function getAllJourneys(
             .select(`
                 *,
                 book:books(title, author, cover_image),
-                user:profiles(username, full_name, profile_picture),
                 sessions_count:reading_sessions(count),
                 thoughts_count:reading_thoughts(count)
             `)
@@ -237,7 +226,6 @@ export async function getJourneyById(journeyId: string): Promise<ReadingJourney 
             .select(`
                 *,
                 book:books(title, author, cover_image),
-                user:profiles(username, full_name, profile_picture),
                 sessions_count:reading_sessions(count),
                 thoughts_count:reading_thoughts(count)
             `)
