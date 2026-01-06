@@ -42,7 +42,7 @@ export async function createNewJourney(
     bookId: string,
     visibility: VisibilityLevel = 'public',
     sessionName?: string
-): Promise<{ success: boolean; journeyId?: string; error?: string }> {
+): Promise<{ success: boolean; journeyId?: string; error?: string; activeJourneyId?: string }> {
     try {
         const user = await getUser()
         if (!user) throw new Error("Not authenticated")
@@ -61,7 +61,8 @@ export async function createNewJourney(
         if (existingJourney) {
             return {
                 success: false,
-                error: "You already have an active reading journey for this book. Please complete or archive it first."
+                error: "You already have an active reading journey for this book. Please complete or archive it first.",
+                activeJourneyId: existingJourney.id
             }
         }
 

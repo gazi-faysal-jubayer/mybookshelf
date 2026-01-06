@@ -47,18 +47,20 @@ export function CreateJourneyDialog({
     const [isCreating, setIsCreating] = useState(false)
     const [showArchiveConfirm, setShowArchiveConfirm] = useState(false)
     const [isArchiving, setIsArchiving] = useState(false)
+    const [conflictJourneyId, setConflictJourneyId] = useState<string | null>(null)
 
     const handleArchiveAndCreate = async () => {
-        if (!activeJourneyId) {
+        const journeyToArchive = conflictJourneyId || activeJourneyId
+        if (!journeyToArchive) {
             toast.error("No active journey found")
-            console.error("activeJourneyId is missing:", activeJourneyId)
+            console.error("activeJourneyId is missing:", { conflictJourneyId, activeJourneyId })
             return
         }
 
-        console.log("Starting archive for journey:", activeJourneyId)
+        console.log("Starting archive for journey:", journeyToArchive)
         setIsArchiving(true)
         try {
-            const archiveResult = await archiveJourney(activeJourneyId)
+            const archiveResult = await archiveJourney(journeyToArchive)
             console.log("Archive result:", archiveResult)
 
             if (archiveResult.success) {
@@ -92,12 +94,14 @@ export function CreateJourneyDialog({
                 toast.success("New reading journey started!")
                 setJourneyName("")
                 setVisibility('connections')
+                setConflictJourneyId(null)
                 onOpenChange(false)
                 onSuccess?.()
             } else {
                 // If error is about active journey, show archive option
                 if (result.error?.includes("already have an active")) {
-                    console.log("Active journey detected, showing archive dialog")
+                    console.log("Active journey detected, showing archive dialog, journeyId:", result.activeJourneyId)
+                    setConflictJourneyId(result.activeJourneyId || null)
                     setShowArchiveConfirm(true)
                 } else {
                     toast.error(result.error || "Failed to create journey")
