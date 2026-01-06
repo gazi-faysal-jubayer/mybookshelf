@@ -11,6 +11,7 @@ import {
     Heart,
     Play,
     CheckCircle,
+    BookPlus,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -36,6 +37,7 @@ import { cn } from "@/lib/utils"
 import { deleteBook, toggleFavorite } from "@/app/actions/book"
 import { startReading, finishReading } from "@/app/actions/reading-sessions"
 import { LendBookModal } from "@/components/lending/lend-book-modal"
+import { CreateJourneyDialog } from "@/components/reading/dialogs/create-journey-dialog"
 
 interface BookActionsBarProps {
     book: {
@@ -57,6 +59,7 @@ export function BookActionsBar({ book }: BookActionsBarProps) {
     const [isFinishing, setIsFinishing] = useState(false)
     const [isLendModalOpen, setIsLendModalOpen] = useState(false)
     const [isFavorite, setIsFavorite] = useState(book.is_favorite)
+    const [showNewJourneyDialog, setShowNewJourneyDialog] = useState(false)
 
     const handleToggleFavorite = async () => {
         // Optimistic update
@@ -141,16 +144,22 @@ export function BookActionsBar({ book }: BookActionsBarProps) {
                 )}
 
                 {book.reading_status === "currently_reading" && (
-                    <Button onClick={handleFinishReading} disabled={isFinishing}>
-                        {isFinishing ? (
-                            "Updating..."
-                        ) : (
-                            <>
-                                <CheckCircle className="h-4 w-4 mr-2" />
-                                Mark as Finished
-                            </>
-                        )}
-                    </Button>
+                    <>
+                        <Button onClick={handleFinishReading} disabled={isFinishing}>
+                            {isFinishing ? (
+                                "Updating..."
+                            ) : (
+                                <>
+                                    <CheckCircle className="h-4 w-4 mr-2" />
+                                    Mark as Finished
+                                </>
+                            )}
+                        </Button>
+                        <Button variant="outline" onClick={() => setShowNewJourneyDialog(true)}>
+                            <BookPlus className="h-4 w-4 mr-2" />
+                            New Journey
+                        </Button>
+                    </>
                 )}
 
                 {book.reading_status === "completed" && (
@@ -232,6 +241,12 @@ export function BookActionsBar({ book }: BookActionsBarProps) {
                 bookId={book.id}
                 isOpen={isLendModalOpen}
                 onClose={() => setIsLendModalOpen(false)}
+            />
+            <CreateJourneyDialog
+                bookId={book.id}
+                open={showNewJourneyDialog}
+                onOpenChange={setShowNewJourneyDialog}
+                onSuccess={() => router.refresh()}
             />
         </>
     )

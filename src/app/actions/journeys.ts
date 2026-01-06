@@ -49,23 +49,6 @@ export async function createNewJourney(
 
         const supabase = await createClient()
 
-        // Check if there's already an active journey for this book
-        const { data: existingJourney } = await supabase
-            .from("reading_journeys")
-            .select("id, status")
-            .eq("book_id", bookId)
-            .eq("user_id", user.id)
-            .eq("status", "active")
-            .single()
-
-        if (existingJourney) {
-            return {
-                success: false,
-                error: "You already have an active reading journey for this book. Please complete or archive it first.",
-                activeJourneyId: existingJourney.id
-            }
-        }
-
         // Generate default session name if not provided
         let finalSessionName = sessionName
         if (!finalSessionName) {
@@ -380,7 +363,7 @@ export async function archiveJourney(journeyId: string): Promise<{ success: bool
 }
 
 // Reopen a journey (from archived/completed to active)
-export async function reopenJourney(journeyId: string): Promise<{ success: boolean; error?: string }> {
+export async function reopenJourney(journeyId: string): Promise<{ success: boolean; error?: string; activeJourneyId?: string }> {
     try {
         const user = await getUser()
         if (!user) throw new Error("Not authenticated")
@@ -396,21 +379,6 @@ export async function reopenJourney(journeyId: string): Promise<{ success: boole
             .single()
 
         if (!journey) throw new Error("Journey not found")
-
-        const { data: activeJourney } = await supabase
-            .from("reading_journeys")
-            .select("id")
-            .eq("book_id", journey.book_id)
-            .eq("user_id", user.id)
-            .eq("status", "active")
-            .single()
-
-        if (activeJourney) {
-            return {
-                success: false,
-                error: "You already have an active journey for this book. Please complete or archive it first."
-            }
-        }
 
         const { error } = await supabase
             .from("reading_journeys")
