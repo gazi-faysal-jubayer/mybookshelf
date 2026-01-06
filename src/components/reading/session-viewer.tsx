@@ -1,374 +1,565 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { ReadingJourney, getJourneyStats, JourneyStats } from "@/app/actions/journeys"
+import { ReadingJourney, getJourneyStats } from "@/app/actions/journeys"
 import { createClient } from "@/lib/supabase/client"
-import { Calendar, BookOpen, MessageSquare, StickyNote, Star, PlayCircle, CheckCircle, XCircle, RotateCcw, Share2, Award, Clock } from "lucide-react"
+import { format } from "date-fns"
+import {
+    BookOpen,
+    Calendar,
+    Clock,
+    TrendingUp,
+    FileText,
+    Star,
+    ChevronDown,
+    ChevronUp,
+    Plus,
+    MessageSquare,
+    AlertTriangle,
+    CheckCircle,
+    PauseCircle
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { ReadingSessionsList } from "@/components/books/reading-sessions-list"
-import { QuickNotesCard } from "@/components/books/quick-notes-card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Progress } from "@/components/ui/progress"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { cn } from "@/lib/utils"
-import { CompleteSessionDialog } from "./complete-session-dialog"
-import { NewSessionDialog } from "./new-session-dialog"
-import { toast } from "sonner"
+import { LogSessionDialog } from "./dialogs/log-session-dialog"
+import { AddThoughtDialog } from "./dialogs/add-thought-dialog"
+import { CompleteJourneyDialog } from "./dialogs/complete-journey-dialog"
+import { AbandonJourneyDialog } from "./dialogs/abandon-journey-dialog"
 
 interface SessionViewerProps {
-    session: ReadingJourney | null
-    bookId: string
-    book: any
-    onUpdate: () => void
+    journey: ReadingJourney | null
+    book: {
+        id: string
+        title: string
+        pages: number | null
+    }
+    onUpdate?: () => void
 }
 
-export function SessionViewer({ session, bookId, book, onUpdate }: SessionViewerProps) {
-    const [stats, setStats] = useState<JourneyStats | null>(null)
-    const [sessions, setSessions] = useState<any[]>([])
-    const [thoughts, setThoughts] = useState<any[]>([])
-    const [reviews, setReviews] = useState<any[]>([])
+interface ReadingSessionEntry {
+    id: string
+    session_date: string
+    start_page: number
+    end_page: number
+    pages_read: number
+    duration_minutes: number | null
+    notes: string | null
+    mood: string | null
+}
+
+interface ReadingThought {
+    id: string
+    content: string
+    page_number: number | null
+    chapter: string | null
+    contains_spoilers: boolean
+    created_at: string
+}
+
+interface JourneyStatistics {
+    totalSessions: number
+    totalPagesRead: number
+    totalTimeSpent: number
+    totalThoughts: number
+    averagePagesPerSession: number
+    averageTimePerSession: number
+}
+
+// Circular Progress Component
+function CircularProgress({
+    value,
+    size = 120,
+    strokeWidth = 8
+}: {
+    value: number
+    size?: number
+    strokeWidth?: number
+}) {
+    const radius = (size - strokeWidth) / 2
+    const circumference = radius * 2 * Math.PI
+    const offset = circumference - (value / 100) * circumference
+
+    return (
+        <div className="relative" style={{ width: size, height: size }}>
+            <svg className="transform -rotate-90" width={size} height={size}>
+                <circle
+                    cx={size / 2}
+                    cy={size / 2}
+                    r={radius}
+                    fill="transparent"
+                    stroke="currentColor"
+                    strokeWidth={strokeWidth}
+                    className="text-muted/30"
+                />
+                <circle
+                    cx={size / 2}
+                    cy={size / 2}
+                    r={radius}
+                    fill="transparent"
+                    stroke="currentColor"
+                    strokeWidth={strokeWidth}
+                    strokeDasharray={circumference}
+                    strokeDashoffset={offset}
+                    strokeLinecap="round"
+                    className="text-primary transition-all duration-500"
+                />
+            </svg>
+            <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-2xl font-bold">{Math.round(value)}%</span>
+            </div>
+        </div>
+    )
+}
+
+// Stat Card Component
+function StatCard({
+    icon: Icon,
+    label,
+    value,
+    subvalue
+}: {
+    icon: any
+    label: string
+    value: string | number
+    subvalue?: string
+}) {
+    return (
+        <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+            <div className="p-2 bg-primary/10 rounded-lg">
+                <Icon className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+                <p className="text-sm text-muted-foreground">{label}</p>
+                <p className="font-semibold">{value}</p>
+                {subvalue && <p className="text-xs text-muted-foreground">{subvalue}</p>}
+            </div>
+        </div>
+    )
+}
+
+export function SessionViewer({ journey, book, onUpdate }: SessionViewerProps) {
+    const [stats, setStats] = useState<JourneyStatistics | null>(null)
+    const [sessions, setSessions] = useState<ReadingSessionEntry[]>([])
+    const [thoughts, setThoughts] = useState<ReadingThought[]>([])
     const [loading, setLoading] = useState(false)
 
     // Dialog states
+    const [showLogSessionDialog, setShowLogSessionDialog] = useState(false)
+    const [showAddThoughtDialog, setShowAddThoughtDialog] = useState(false)
     const [showCompleteDialog, setShowCompleteDialog] = useState(false)
-    const [showNewSessionDialog, setShowNewSessionDialog] = useState(false)
+    const [showAbandonDialog, setShowAbandonDialog] = useState(false)
+
+    // Collapsible states
+    const [sessionsExpanded, setSessionsExpanded] = useState(true)
+    const [thoughtsExpanded, setThoughtsExpanded] = useState(true)
 
     useEffect(() => {
-        if (session) {
-            loadSessionData()
+        if (journey) {
+            loadJourneyData()
         }
-    }, [session?.id])
+    }, [journey?.id])
 
-    async function loadSessionData() {
-        if (!session) return
-
+    async function loadJourneyData() {
+        if (!journey) return
         setLoading(true)
-        const supabase = createClient()
 
         try {
-            // Fetch stats
-            const statsResult = await getJourneyStats(session.id)
-            if (statsResult?.success && statsResult.stats) {
-                setStats(statsResult.stats)
+            const journeyStats = await getJourneyStats(journey.id)
+            if (journeyStats) {
+                setStats(journeyStats)
             }
 
-            // Fetch sessions
+            const supabase = createClient()
+
             const { data: sessionsData } = await supabase
                 .from('reading_sessions')
                 .select('*')
-                .eq('journey_id', session.id)
+                .eq('journey_id', journey.id)
                 .order('session_date', { ascending: false })
 
-            // Fetch thoughts
             const { data: thoughtsData } = await supabase
                 .from('reading_thoughts')
                 .select('*')
-                .eq('journey_id', session.id)
+                .eq('journey_id', journey.id)
                 .order('created_at', { ascending: false })
-
-            // Fetch reviews
-            const { data: reviewsData } = await supabase
-                .from('book_reviews')
-                .select('*')
-                .eq('journey_id', session.id)
 
             setSessions(sessionsData || [])
             setThoughts(thoughtsData || [])
-            setReviews(reviewsData || [])
         } catch (error) {
-            console.error("Error loading session data:", error)
+            console.error("Error loading journey data:", error)
         } finally {
             setLoading(false)
         }
     }
 
-    if (!session) {
+    const handleDialogSuccess = () => {
+        loadJourneyData()
+        onUpdate?.()
+    }
+
+    if (!journey) {
         return (
-            <div className="text-center py-24 text-gray-500 bg-gray-900/10 border border-gray-800 rounded-lg border-dashed">
-                <Calendar className="w-16 h-16 mx-auto mb-4 text-gray-700" />
-                <p>Select a reading session from the timeline above</p>
-                <p className="text-sm text-gray-600 mt-2">or start a new one to begin tracking</p>
-            </div>
+            <Card>
+                <CardContent className="py-12 text-center text-muted-foreground">
+                    <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>Select a reading journey from the timeline above to view details</p>
+                </CardContent>
+            </Card>
         )
     }
 
-    const totalPagesRead = stats?.total_pages_read || sessions.reduce((sum, s) => sum + (s.pages_read || 0), 0)
-    const progress = book.pages ? Math.round((totalPagesRead / book.pages) * 100) : 0
-    const isActive = session.status === 'active'
+    const totalPagesRead = stats?.totalPagesRead || 0
+    const progress = book.pages ? Math.min(Math.round((totalPagesRead / book.pages) * 100), 100) : 0
+    const lastSession = sessions[0]
+    const lastEndPage = lastSession?.end_page || 0
+
+    const getMoodEmoji = (mood: string | null) => {
+        const moods: Record<string, string> = {
+            great: '😊',
+            good: '📚',
+            okay: '😐',
+            slow: '😴',
+            intense: '🔥'
+        }
+        return mood ? moods[mood] || '📖' : '📖'
+    }
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-300">
-            {/* Session Header Card */}
-            <div className="bg-gradient-to-br from-amber-950/40 to-gray-900 border border-amber-900/30 rounded-xl p-6 shadow-xl relative overflow-hidden">
-                {/* Background decorative elements */}
-                <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-amber-500/5 rounded-full blur-3xl pointer-events-none" />
-
-                <div className="flex flex-col md:flex-row items-start justify-between gap-4 mb-8">
-                    <div>
-                        <div className="flex items-center gap-3 mb-2">
-                            <div className={cn(
-                                "px-2.5 py-0.5 rounded-full text-xs font-medium border",
-                                session.status === 'active' && "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-                                session.status === 'completed' && "bg-blue-500/10 text-blue-400 border-blue-500/20",
-                                session.status === 'abandoned' && "bg-gray-500/10 text-gray-400 border-gray-500/20"
-                            )}>
-                                {session.status.toUpperCase()}
+        <div className="space-y-4">
+            {/* Journey Header */}
+            <Card>
+                <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between">
+                        <div>
+                            <div className="flex items-center gap-2 mb-1">
+                                <Badge variant={journey.status === 'active' ? 'default' : 'secondary'}>
+                                    {journey.status}
+                                </Badge>
+                                <Badge variant="outline">{journey.visibility}</Badge>
                             </div>
-                            <span className="text-xs text-gray-500 border-l border-gray-700 pl-3">
-                                {session.visibility.charAt(0).toUpperCase() + session.visibility.slice(1)} Session
-                            </span>
-                        </div>
-                        <h2 className="text-3xl font-bold text-gray-100">
-                            {session.session_name || "Reading Journey"}
-                        </h2>
-                        <div className="flex items-center gap-4 text-sm text-gray-400 mt-2">
-                            <span className="flex items-center gap-1.5">
-                                <Calendar className="w-4 h-4 text-amber-500/70" />
-                                Started {new Date(session.started_at).toLocaleDateString()}
-                            </span>
-                            {session.finished_at && (
-                                <span className="flex items-center gap-1.5">
-                                    <CheckCircle className="w-4 h-4 text-blue-500/70" />
-                                    Finished {new Date(session.finished_at).toLocaleDateString()}
-                                </span>
-                            )}
+                            <CardTitle className="text-xl">
+                                {journey.session_name || "Unnamed Journey"}
+                            </CardTitle>
+                            <p className="text-sm text-muted-foreground mt-1">
+                                Started {format(new Date(journey.started_at), "MMMM d, yyyy")}
+                                {journey.finished_at && (
+                                    <> · Finished {format(new Date(journey.finished_at), "MMMM d, yyyy")}</>
+                                )}
+                            </p>
                         </div>
                     </div>
-
-                    <div className="flex gap-2 w-full md:w-auto">
-                        {isActive && (
-                            <>
-                                <Button
-                                    variant="outline"
-                                    className="flex-1 md:flex-none border-amber-900/50 hover:bg-amber-900/20 text-amber-200"
-                                    onClick={() => setShowCompleteDialog(true)}
-                                >
-                                    <TrophyIcon className="w-4 h-4 mr-2 text-amber-500" />
-                                    Complete
-                                </Button>
-                            </>
-                        )}
-                        {session.status === 'completed' && (
-                            <Button
-                                className="flex-1 md:flex-none bg-amber-600 hover:bg-amber-700 text-white shadow-lg shadow-amber-900/20"
-                                onClick={() => setShowNewSessionDialog(true)}
-                            >
-                                <RotateCcw className="w-4 h-4 mr-2" />
-                                Start Again
-                            </Button>
-                        )}
-                    </div>
-                </div>
-
-                {/* Progress Stats Grid */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {/* Main Progress - Circular-ish representation via flex layout */}
-                    <div className="col-span-2 bg-gray-900/50 rounded-lg p-4 border border-gray-800 flex items-center gap-4">
-                        <div className="relative w-16 h-16 flex-shrink-0">
-                            <svg className="w-full h-full transform -rotate-90">
-                                <circle
-                                    cx="32" cy="32" r="28"
-                                    stroke="currentColor" strokeWidth="6" fill="transparent"
-                                    className="text-gray-800"
-                                />
-                                <circle
-                                    cx="32" cy="32" r="28"
-                                    stroke="currentColor" strokeWidth="6" fill="transparent"
-                                    strokeDasharray={175.9}
-                                    strokeDashoffset={175.9 - (Math.min(progress, 100) / 100) * 175.9}
-                                    className={cn(
-                                        "transition-all duration-1000 ease-out",
-                                        progress >= 100 ? "text-emerald-500" : "text-amber-500"
-                                    )}
-                                />
-                            </svg>
-                            <div className="absolute inset-0 flex items-center justify-center text-sm font-bold text-gray-200">
-                                {progress}%
-                            </div>
-                        </div>
-                        <div className="flex-1">
-                            <div className="text-sm text-gray-400 mb-1">Pages Read</div>
-                            <div className="text-2xl font-bold text-gray-100">
-                                {totalPagesRead} <span className="text-sm font-normal text-gray-500">of {book.pages || '?'}</span>
-                            </div>
-                            <div className="w-full bg-gray-800 rounded-full h-1.5 mt-2 overflow-hidden">
-                                <div
-                                    className="bg-amber-500 h-full rounded-full transition-all duration-500"
-                                    style={{ width: `${Math.min(progress, 100)}%` }}
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-800 hover:border-amber-900/50 transition-colors">
-                        <div className="flex items-center gap-2 text-sm text-gray-400 mb-2">
-                            <BookOpen className="w-4 h-4 text-blue-400" />
-                            Sessions
-                        </div>
-                        <div className="text-2xl font-bold text-gray-100">{stats?.sessions_count || 0}</div>
-                        <div className="text-xs text-gray-500 mt-1">
-                            {stats?.avg_pages_per_session || 0} pages/session
-                        </div>
-                    </div>
-
-                    <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-800 hover:border-amber-900/50 transition-colors">
-                        <div className="flex items-center gap-2 text-sm text-gray-400 mb-2">
-                            <Clock className="w-4 h-4 text-purple-400" />
-                            Time
-                        </div>
-                        <div className="text-2xl font-bold text-gray-100">
-                            {stats?.reading_days || 0}
-                        </div>
-                        <div className="text-xs text-gray-500 mt-1">
-                            Days active
-                        </div>
-                    </div>
-                </div>
-            </div>
+                </CardHeader>
+            </Card>
 
             {loading ? (
-                <div className="text-center py-12">
-                    <div className="animate-spin w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-                    <p className="text-gray-500">Loading session details...</p>
-                </div>
+                <Card>
+                    <CardContent className="py-8 text-center text-muted-foreground">
+                        Loading journey data...
+                    </CardContent>
+                </Card>
             ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Left Column: Logs & Thoughts */}
-                    <div className="lg:col-span-2 space-y-6">
-                        {/* Reading Sessions Log */}
-                        <div className="bg-gray-900/30 border border-gray-800 rounded-xl p-5">
-                            <h3 className="text-lg font-semibold text-gray-200 mb-4 flex items-center gap-2">
-                                <BookOpen className="w-5 h-5 text-amber-500" />
-                                Reading Log
-                            </h3>
-                            <ReadingSessionsList sessions={sessions} bookId={bookId} />
-                        </div>
-
-                        {/* Reading Thoughts */}
-                        {thoughts.length > 0 && (
-                            <div className="bg-gray-900/30 border border-gray-800 rounded-xl p-5">
-                                <h3 className="text-lg font-semibold text-gray-200 mb-4 flex items-center gap-2">
-                                    <MessageSquare className="w-5 h-5 text-amber-500" />
-                                    Thoughts & Notes
-                                </h3>
-                                <div className="space-y-4">
-                                    {thoughts.map(thought => (
-                                        <div key={thought.id} className="p-4 bg-gray-800/40 border border-gray-700/50 rounded-lg hover:bg-gray-800/60 transition-colors">
-                                            <div className="flex justify-between items-start mb-2">
-                                                {thought.page_number && (
-                                                    <span className="text-xs font-medium text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded">
-                                                        Page {thought.page_number}
-                                                    </span>
-                                                )}
-                                                <span className="text-xs text-gray-500">
-                                                    {new Date(thought.created_at).toLocaleDateString()}
-                                                </span>
-                                            </div>
-                                            <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">{thought.content}</p>
-                                        </div>
-                                    ))}
+                <>
+                    {/* 📊 Reading Progress - Always Expanded */}
+                    <Card>
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-lg flex items-center gap-2">
+                                <TrendingUp className="h-5 w-5" />
+                                Reading Progress
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="flex flex-col md:flex-row gap-6 items-center">
+                                <div className="flex flex-col items-center">
+                                    <CircularProgress value={progress} />
+                                    <p className="text-sm text-muted-foreground mt-2">
+                                        {totalPagesRead} / {book.pages || '?'} pages
+                                    </p>
+                                </div>
+                                <div className="flex-1 grid grid-cols-2 gap-3 w-full">
+                                    <StatCard
+                                        icon={BookOpen}
+                                        label="Sessions"
+                                        value={stats?.totalSessions || 0}
+                                        subvalue={`${Math.round(stats?.averagePagesPerSession || 0)} pages avg`}
+                                    />
+                                    <StatCard
+                                        icon={Clock}
+                                        label="Time Spent"
+                                        value={`${stats?.totalTimeSpent || 0} min`}
+                                        subvalue={`${Math.round(stats?.averageTimePerSession || 0)} min avg`}
+                                    />
+                                    <StatCard
+                                        icon={FileText}
+                                        label="Pages Read"
+                                        value={totalPagesRead}
+                                        subvalue={
+                                            book.pages ? `${book.pages - totalPagesRead} remaining` : undefined
+                                        }
+                                    />
+                                    <StatCard
+                                        icon={MessageSquare}
+                                        label="Thoughts"
+                                        value={stats?.totalThoughts || thoughts.length}
+                                    />
                                 </div>
                             </div>
-                        )}
-                    </div>
+                            <div className="mt-4">
+                                <Progress value={progress} className="h-2" />
+                            </div>
 
-                    {/* Right Column: Quick Notes & Review */}
-                    <div className="space-y-6">
-                        <QuickNotesCard bookId={bookId} thoughts={thoughts} />
+                            {/* Action Buttons */}
+                            {journey.status === 'active' && (
+                                <div className="flex flex-wrap gap-2 mt-6">
+                                    <Button onClick={() => setShowLogSessionDialog(true)}>
+                                        <Plus className="h-4 w-4 mr-2" />
+                                        Log Today's Reading
+                                    </Button>
+                                    <Button variant="secondary" onClick={() => setShowCompleteDialog(true)}>
+                                        <CheckCircle className="h-4 w-4 mr-2" />
+                                        Mark as Completed
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => setShowAbandonDialog(true)}
+                                    >
+                                        <PauseCircle className="h-4 w-4 mr-2" />
+                                        Abandon
+                                    </Button>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
 
-                        {/* Review Section */}
-                        {(reviews.length > 0 || session.status === 'completed') && (
-                            <div className="bg-gradient-to-b from-gray-900 to-gray-900/50 border border-gray-800 rounded-xl p-5">
-                                <h3 className="text-lg font-semibold text-gray-200 mb-4 flex items-center gap-2">
-                                    <Star className="w-5 h-5 text-amber-500" />
-                                    Review
-                                </h3>
-
-                                {reviews.length > 0 ? (
-                                    reviews.map(review => (
-                                        <div key={review.id} className="space-y-3">
-                                            {review.rating && (
-                                                <div className="flex items-center gap-1">
-                                                    {Array.from({ length: 5 }).map((_, i) => (
-                                                        <Star
-                                                            key={i}
-                                                            className={cn(
-                                                                "w-5 h-5",
-                                                                i < review.rating
-                                                                    ? "fill-amber-400 text-amber-400"
-                                                                    : "text-gray-700"
-                                                            )}
-                                                        />
-                                                    ))}
-                                                </div>
-                                            )}
-                                            {review.title && (
-                                                <h4 className="font-medium text-gray-100">{review.title}</h4>
-                                            )}
-                                            {review.review_text && (
-                                                <p className="text-sm text-gray-300 italic">"{review.review_text}"</p>
-                                            )}
-                                        </div>
-                                    ))
-                                ) : (
-                                    <div className="text-center py-6">
-                                        <p className="text-sm text-gray-400 mb-3">No review written yet.</p>
+                    {/* 📖 Daily Reading Sessions - Collapsible */}
+                    <Collapsible open={sessionsExpanded} onOpenChange={setSessionsExpanded}>
+                        <Card>
+                            <CollapsibleTrigger asChild>
+                                <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+                                    <div className="flex items-center justify-between">
+                                        <CardTitle className="text-lg flex items-center gap-2">
+                                            <Calendar className="h-5 w-5" />
+                                            Daily Reading Sessions
+                                            <Badge variant="secondary" className="ml-2">
+                                                {sessions.length}
+                                            </Badge>
+                                        </CardTitle>
+                                        {sessionsExpanded ? (
+                                            <ChevronUp className="h-5 w-5" />
+                                        ) : (
+                                            <ChevronDown className="h-5 w-5" />
+                                        )}
+                                    </div>
+                                </CardHeader>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent>
+                                <CardContent className="pt-0">
+                                    {journey.status === 'active' && (
                                         <Button
                                             variant="outline"
                                             size="sm"
-                                            className="border-gray-700 text-gray-300 hover:text-white"
-                                            onClick={() => setShowCompleteDialog(true)}
-                                            disabled={session.status !== 'completed'}
+                                            onClick={() => setShowLogSessionDialog(true)}
+                                            className="mb-4"
                                         >
-                                            Write Review
+                                            <Plus className="h-4 w-4 mr-2" />
+                                            Log Today's Reading
                                         </Button>
+                                    )}
+
+                                    {sessions.length === 0 ? (
+                                        <p className="text-sm text-muted-foreground text-center py-4">
+                                            No reading sessions logged yet
+                                        </p>
+                                    ) : (
+                                        <div className="space-y-3">
+                                            {sessions.map((session) => (
+                                                <div
+                                                    key={session.id}
+                                                    className="flex items-start gap-3 p-3 bg-muted/30 rounded-lg"
+                                                >
+                                                    <div className="text-2xl">
+                                                        {getMoodEmoji(session.mood)}
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center justify-between">
+                                                            <p className="font-medium">
+                                                                {format(new Date(session.session_date), "MMM d, yyyy")}
+                                                            </p>
+                                                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                                                <span>{session.pages_read} pages</span>
+                                                                {session.duration_minutes && (
+                                                                    <span>• {session.duration_minutes} min</span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        <p className="text-sm text-muted-foreground mt-0.5">
+                                                            Pages {session.start_page}-{session.end_page}
+                                                        </p>
+                                                        {session.notes && (
+                                                            <p className="text-sm text-muted-foreground mt-1">
+                                                                {session.notes}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </CollapsibleContent>
+                        </Card>
+                    </Collapsible>
+
+                    {/* 💭 Reading Thoughts - Collapsible */}
+                    <Collapsible open={thoughtsExpanded} onOpenChange={setThoughtsExpanded}>
+                        <Card>
+                            <CollapsibleTrigger asChild>
+                                <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+                                    <div className="flex items-center justify-between">
+                                        <CardTitle className="text-lg flex items-center gap-2">
+                                            <MessageSquare className="h-5 w-5" />
+                                            Reading Thoughts
+                                            <Badge variant="secondary" className="ml-2">
+                                                {thoughts.length}
+                                            </Badge>
+                                        </CardTitle>
+                                        {thoughtsExpanded ? (
+                                            <ChevronUp className="h-5 w-5" />
+                                        ) : (
+                                            <ChevronDown className="h-5 w-5" />
+                                        )}
+                                    </div>
+                                </CardHeader>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent>
+                                <CardContent className="pt-0">
+                                    {journey.status === 'active' && (
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => setShowAddThoughtDialog(true)}
+                                            className="mb-4"
+                                        >
+                                            <Plus className="h-4 w-4 mr-2" />
+                                            Add Reading Thought
+                                        </Button>
+                                    )}
+
+                                    {thoughts.length === 0 ? (
+                                        <p className="text-sm text-muted-foreground text-center py-4">
+                                            No thoughts recorded yet
+                                        </p>
+                                    ) : (
+                                        <div className="space-y-3">
+                                            {thoughts.map((thought) => (
+                                                <div key={thought.id} className="p-3 bg-muted/30 rounded-lg">
+                                                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                                        {thought.page_number && (
+                                                            <Badge variant="outline" className="text-xs">
+                                                                Page {thought.page_number}
+                                                            </Badge>
+                                                        )}
+                                                        {thought.chapter && (
+                                                            <Badge variant="outline" className="text-xs">
+                                                                {thought.chapter}
+                                                            </Badge>
+                                                        )}
+                                                        {thought.contains_spoilers && (
+                                                            <Badge variant="destructive" className="text-xs">
+                                                                <AlertTriangle className="h-3 w-3 mr-1" />
+                                                                Spoiler
+                                                            </Badge>
+                                                        )}
+                                                    </div>
+                                                    <p
+                                                        className={cn(
+                                                            "text-sm",
+                                                            thought.contains_spoilers &&
+                                                                "blur-sm hover:blur-none transition-all cursor-pointer"
+                                                        )}
+                                                    >
+                                                        {thought.content}
+                                                    </p>
+                                                    <p className="text-xs text-muted-foreground mt-2">
+                                                        {format(
+                                                            new Date(thought.created_at),
+                                                            "MMM d, yyyy 'at' h:mm a"
+                                                        )}
+                                                    </p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </CollapsibleContent>
+                        </Card>
+                    </Collapsible>
+
+                    {/* ⭐ My Review - if completed */}
+                    {journey.status === 'completed' && journey.review && (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="text-lg flex items-center gap-2">
+                                    <Star className="h-5 w-5" />
+                                    Final Review
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                {journey.rating && (
+                                    <div className="flex items-center gap-1 mb-3">
+                                        {Array.from({ length: 5 }).map((_, i) => (
+                                            <Star
+                                                key={i}
+                                                className={cn(
+                                                    "h-5 w-5",
+                                                    i < journey.rating!
+                                                        ? "fill-yellow-400 text-yellow-400"
+                                                        : "text-gray-300"
+                                                )}
+                                            />
+                                        ))}
                                     </div>
                                 )}
-                            </div>
-                        )}
-                    </div>
-                </div>
+                                <p className="text-sm">{journey.review}</p>
+                            </CardContent>
+                        </Card>
+                    )}
+                </>
             )}
 
-            <CompleteSessionDialog
-                journeyId={session.id}
+            {/* Dialogs */}
+            <LogSessionDialog
+                bookId={book.id}
+                open={showLogSessionDialog}
+                onOpenChange={setShowLogSessionDialog}
+                onSuccess={handleDialogSuccess}
+                lastEndPage={lastEndPage}
+            />
+
+            <AddThoughtDialog
+                bookId={book.id}
+                open={showAddThoughtDialog}
+                onOpenChange={setShowAddThoughtDialog}
+                onSuccess={handleDialogSuccess}
+            />
+
+            <CompleteJourneyDialog
+                journeyId={journey.id}
                 open={showCompleteDialog}
                 onOpenChange={setShowCompleteDialog}
-                onSuccess={() => {
-                    onUpdate()
-                    loadSessionData()
-                }}
+                onSuccess={handleDialogSuccess}
+                currentProgress={progress}
             />
 
-            <NewSessionDialog
-                bookId={bookId}
-                open={showNewSessionDialog}
-                onOpenChange={setShowNewSessionDialog}
-                onSuccess={() => {
-                    onUpdate()
-                }}
+            <AbandonJourneyDialog
+                journeyId={journey.id}
+                open={showAbandonDialog}
+                onOpenChange={setShowAbandonDialog}
+                onSuccess={handleDialogSuccess}
             />
         </div>
-    )
-}
-
-function TrophyIcon(props: any) {
-    return (
-        <svg
-            {...props}
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        >
-            <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
-            <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
-            <path d="M4 22h16" />
-            <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" />
-            <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" />
-            <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
-        </svg>
     )
 }

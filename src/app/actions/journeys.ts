@@ -17,6 +17,8 @@ export interface ReadingJourney {
     finished_at: string | null
     rating: number | null
     review: string | null
+    session_name: string | null
+    abandon_reason: string | null
     is_hidden_by_owner: boolean
     created_at: string
     updated_at: string
@@ -33,21 +35,8 @@ export interface ReadingJourney {
     }
     sessions_count?: number
     thoughts_count?: number
-    session_name?: string
-    abandon_reason?: string
 }
 
-export interface JourneyStats {
-    journey_id: string
-    sessions_count: number
-    thoughts_count: number
-    total_pages_read: number
-    reading_days: number
-    avg_pages_per_session: number
-    days_since_start: number
-}
-
-// Create a new reading journey (reading season)
 // Create a new reading journey (reading season)
 export async function createNewJourney(
     bookId: string,
@@ -70,11 +59,22 @@ export async function createNewJourney(
             .single()
 
         if (existingJourney) {
-            // Archive the existing active journey instead of blocking
-            await supabase
-                .from('reading_journeys')
-                .update({ status: 'archived' })
-                .eq('id', existingJourney.id)
+            return {
+                success: false,
+                error: "You already have an active reading journey for this book. Please complete or archive it first."
+            }
+        }
+
+        // Generate default session name if not provided
+        let finalSessionName = sessionName
+        if (!finalSessionName) {
+            const { count } = await supabase
+                .from("reading_journeys")
+                .select("*", { count: "exact", head: true })
+                .eq("book_id", bookId)
+                .eq("user_id", user.id)
+
+            finalSessionName = count === 0 ? "First Read" : `Re-read #${(count || 0) + 1}`
         }
 
         // Create new journey
@@ -85,7 +85,7 @@ export async function createNewJourney(
                 user_id: user.id,
                 status: "active",
                 visibility: visibility,
-                session_name: sessionName
+                session_name: finalSessionName,
             })
             .select()
             .single()
@@ -462,97 +462,118 @@ export async function updateJourneyVisibility(
 }
 
 // Get journey statistics
-// Get journey statistics
 export async function getJourneyStats(journeyId: string) {
     try {
         const supabase = await createClient()
 
-        // Try to fetch from the view first
-        const { data, error } = await supabase
-            .from('journey_stats_view')
-            .select('*')
-            .eq('journey_id', journeyId)
-            .single()
+        const { data: sessions } = await supabase
+            .from("reading_sessions")
+            .select("*")
+            .eq("journey_id", journeyId)
 
-        if (!error && data) {
-            return { success: true, stats: data }
-        }
+        const { data: thoughts } = await supabase
+            .from("reading_thoughts")
+            .select("id")
+            .eq("journey_id", journeyId)
 
-        // Fallback to manual calculation if view not ready/access issues
-        const { count: sessionCount } = await supabase
-            .from('reading_sessions')
-            .select('*', { count: 'exact', head: true })
-            .eq('journey_id', journeyId)
-
-        const { count: thoughtCount } = await supabase
-            .from('reading_thoughts')
-            .select('*', { count: 'exact', head: true })
-            .eq('journey_id', journeyId)
-
-        return {
-            success: true,
-            stats: {
-                journey_id: journeyId,
-                sessions_count: sessionCount || 0,
-                thoughts_count: thoughtCount || 0,
-                total_pages_read: 0,
-                reading_days: 0,
-                avg_pages_per_session: 0,
-                days_since_start: 0
+        if (!sessions || sessions.length === 0) {
+            return {
+                totalSessions: 0,
+                totalPagesRead: 0,
+                totalTimeSpent: 0,
+                totalThoughts: thoughts?.length || 0,
+                averagePagesPerSession: 0,
+                averageTimePerSession: 0,
             }
         }
+
+        const totalPagesRead = sessions.reduce((sum, s) => sum + (s.pages_read || 0), 0)
+        const totalTimeSpent = sessions.reduce((sum, s) => sum + (s.duration_minutes || 0), 0)
+        const sessionsWithTime = sessions.filter((s) => s.duration_minutes)
+
+        return {
+            totalSessions: sessions.length,
+            totalPagesRead,
+            totalTimeSpent,
+            totalThoughts: thoughts?.length || 0,
+            averagePagesPerSession: Math.round(totalPagesRead / sessions.length),
+            averageTimePerSession: sessionsWithTime.length
+                ? Math.round(totalTimeSpent / sessionsWithTime.length)
+                : 0,
+        }
     } catch (error) {
-        console.error("Error getting stats:", error)
-        return { success: false, error: "Failed to load stats" }
+        console.error("Error getting journey stats:", error)
+        return null
     }
 }
 
-export async function updateJourneyName(journeyId: string, name: string) {
+// Update journey session name
+export async function updateJourneyName(
+    journeyId: string,
+    name: string
+): Promise<{ success: boolean; error?: string }> {
     try {
-        const supabase = await createClient()
         const user = await getUser()
+        if (!user) throw new Error("Not authenticated")
 
-        if (!user) return { success: false, error: "Not authenticated" }
+        const supabase = await createClient()
 
-        const { error } = await supabase
-            .from('reading_journeys')
+        const { data: journey, error } = await supabase
+            .from("reading_journeys")
             .update({ session_name: name })
-            .eq('id', journeyId)
-            .eq('user_id', user.id)
+            .eq("id", journeyId)
+            .eq("user_id", user.id)
+            .select("book_id")
+            .single()
 
-        if (error) throw error
+        if (error) throw new Error(error.message)
 
-        revalidatePath('/dashboard/books')
+        if (journey) {
+            revalidatePath(`/dashboard/books/${journey.book_id}`)
+            revalidatePath("/dashboard")
+        }
+
         return { success: true }
     } catch (error) {
         console.error("Error updating journey name:", error)
-        return { success: false, error: "Failed to update name" }
+        return { success: false, error: error instanceof Error ? error.message : "Failed to update name" }
     }
 }
 
-export async function abandonJourney(journeyId: string, reason?: string) {
+// Abandon a journey with optional reason
+export async function abandonJourney(
+    journeyId: string,
+    reason?: string
+): Promise<{ success: boolean; error?: string }> {
     try {
-        const supabase = await createClient()
         const user = await getUser()
+        if (!user) throw new Error("Not authenticated")
 
-        if (!user) return { success: false, error: "Not authenticated" }
+        const supabase = await createClient()
 
-        const { error } = await supabase
-            .from('reading_journeys')
+        const { data: journey, error } = await supabase
+            .from("reading_journeys")
             .update({
-                status: 'abandoned',
-                abandon_reason: reason,
-                finished_at: new Date().toISOString()
+                status: "abandoned",
+                finished_at: new Date().toISOString(),
+                abandon_reason: reason || null,
             })
-            .eq('id', journeyId)
-            .eq('user_id', user.id)
+            .eq("id", journeyId)
+            .eq("user_id", user.id)
+            .eq("status", "active")
+            .select("book_id")
+            .single()
 
-        if (error) throw error
+        if (error) throw new Error(error.message)
 
-        revalidatePath('/dashboard/books')
+        if (journey) {
+            revalidatePath(`/dashboard/books/${journey.book_id}`)
+            revalidatePath("/dashboard")
+        }
+
         return { success: true }
     } catch (error) {
         console.error("Error abandoning journey:", error)
-        return { success: false, error: "Failed to abandon journey" }
+        return { success: false, error: error instanceof Error ? error.message : "Failed to abandon journey" }
     }
 }

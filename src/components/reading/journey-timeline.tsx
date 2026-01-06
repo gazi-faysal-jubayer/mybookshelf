@@ -2,160 +2,245 @@
 
 import { useEffect, useState } from "react"
 import { ReadingJourney, getAllJourneys } from "@/app/actions/journeys"
-import { JourneyCard } from "./journey-card"
+import { createClient } from "@/lib/supabase/client"
+import { JourneyTimelineCard } from "./journey-timeline-card"
+import { NewJourneyCard } from "./new-journey-card"
+import { JourneyCardMenu } from "./journey-card-menu"
+import { CreateJourneyDialog } from "./dialogs/create-journey-dialog"
 import { Button } from "@/components/ui/button"
-import { RefreshCw, Plus } from "lucide-react"
-import { toast } from "sonner"
-import { startReading } from "@/app/actions/reading-sessions"
+import { Badge } from "@/components/ui/badge"
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuRadioGroup,
+    DropdownMenuRadioItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Filter, RefreshCw } from "lucide-react"
+import { toast } from "sonner"
 
 interface JourneyTimelineProps {
     bookId: string
     userId: string
     isOwner: boolean
-    currentStatus: string
+    totalPages?: number
+    onJourneySelect?: (journey: ReadingJourney | null) => void
 }
 
-export function JourneyTimeline({ bookId, userId, isOwner, currentStatus }: JourneyTimelineProps) {
-    const [journeys, setJourneys] = useState<ReadingJourney[]>([])
-    const [isLoading, setIsLoading] = useState(true)
-    const [selectedJourney, setSelectedJourney] = useState<string | null>(null)
-    const [showNewSeasonDialog, setShowNewSeasonDialog] = useState(false)
-    const [newSeasonVisibility, setNewSeasonVisibility] = useState<'public' | 'connections' | 'private'>('public')
-    const [isStarting, setIsStarting] = useState(false)
+type FilterType = 'all' | 'active' | 'completed' | 'abandoned'
 
-    const loadJourneys = async () => {
-        setIsLoading(true)
-        try {
-            const data = await getAllJourneys(bookId, userId)
-            setJourneys(data)
-            // Auto-select active journey
-            const active = data.find(j => j.status === 'active')
-            if (active) {
-                setSelectedJourney(active.id)
-            }
-        } catch (error) {
-            toast.error("Failed to load reading journeys")
-        } finally {
-            setIsLoading(false)
-        }
-    }
+interface JourneyWithProgress extends ReadingJourney {
+    progress: number
+}
+
+export function JourneyTimeline({
+    bookId,
+    userId,
+    isOwner,
+    totalPages,
+    onJourneySelect
+}: JourneyTimelineProps) {
+    const [journeys, setJourneys] = useState<JourneyWithProgress[]>([])
+    const [selectedJourneyId, setSelectedJourneyId] = useState<string | null>(null)
+    const [showCreateDialog, setShowCreateDialog] = useState(false)
+    const [isLoading, setIsLoading] = useState(true)
+    const [filter, setFilter] = useState<FilterType>('all')
 
     useEffect(() => {
         loadJourneys()
     }, [bookId, userId])
 
-    const handleStartNewSeason = async () => {
-        setIsStarting(true)
+    const loadJourneys = async () => {
+        setIsLoading(true)
         try {
-            await startReading(bookId, undefined, newSeasonVisibility)
-            toast.success("Started new reading season!")
-            setShowNewSeasonDialog(false)
-            await loadJourneys()
+            const data = await getAllJourneys(bookId, userId)
+
+            // Calculate progress for each journey
+            const supabase = createClient()
+            const journeysWithProgress = await Promise.all(
+                data.map(async (journey) => {
+                    // Get max end_page from sessions for this journey
+                    const { data: sessions } = await supabase
+                        .from('reading_sessions')
+                        .select('end_page')
+                        .eq('journey_id', journey.id)
+                        .order('end_page', { ascending: false })
+                        .limit(1) as { data: { end_page: number }[] | null }
+
+                    const currentPage = sessions?.[0]?.end_page || 0
+                    const progress = totalPages ? Math.min((currentPage / totalPages) * 100, 100) : 0
+
+                    return {
+                        ...journey,
+                        progress
+                    }
+                })
+            )
+
+            setJourneys(journeysWithProgress)
+
+            // Auto-select active journey or first journey
+            if (!selectedJourneyId) {
+                const active = journeysWithProgress.find(j => j.status === 'active')
+                if (active) {
+                    setSelectedJourneyId(active.id)
+                    onJourneySelect?.(active)
+                } else if (journeysWithProgress.length > 0) {
+                    setSelectedJourneyId(journeysWithProgress[0].id)
+                    onJourneySelect?.(journeysWithProgress[0])
+                }
+            }
         } catch (error) {
-            toast.error("Failed to start new season")
+            toast.error("Failed to load journeys")
         } finally {
-            setIsStarting(false)
+            setIsLoading(false)
         }
     }
 
-    const canStartNewSeason = currentStatus === 'completed' || !journeys.some(j => j.status === 'active')
+    const handleSelectJourney = (journey: JourneyWithProgress) => {
+        setSelectedJourneyId(journey.id)
+        onJourneySelect?.(journey)
+    }
+
+    const handleMenuClick = (e: React.MouseEvent, journey: JourneyWithProgress) => {
+        e.stopPropagation()
+        // Menu will be handled by JourneyCardMenu component
+    }
+
+    const filteredJourneys = journeys.filter(j => {
+        if (filter === 'all') return true
+        return j.status === filter
+    })
+
+    const getFilterCount = (status: FilterType) => {
+        if (status === 'all') return journeys.length
+        return journeys.filter(j => j.status === status).length
+    }
 
     return (
         <div className="space-y-4">
+            {/* Header */}
             <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold">Reading History</h3>
+                <div className="flex items-center gap-3">
+                    <h3 className="text-lg font-semibold">Reading Journeys</h3>
+                    {journeys.length > 0 && (
+                        <Badge variant="secondary" className="text-xs">
+                            {journeys.length}
+                        </Badge>
+                    )}
+                </div>
+
                 <div className="flex gap-2">
+                    {/* Filter */}
+                    {journeys.length > 1 && (
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline" size="sm">
+                                    <Filter className="h-4 w-4 mr-1" />
+                                    {filter === 'all' ? 'All' : filter.charAt(0).toUpperCase() + filter.slice(1)}
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuRadioGroup value={filter} onValueChange={(v) => setFilter(v as FilterType)}>
+                                    <DropdownMenuRadioItem value="all">
+                                        All ({getFilterCount('all')})
+                                    </DropdownMenuRadioItem>
+                                    <DropdownMenuRadioItem value="active">
+                                        Active ({getFilterCount('active')})
+                                    </DropdownMenuRadioItem>
+                                    <DropdownMenuRadioItem value="completed">
+                                        Completed ({getFilterCount('completed')})
+                                    </DropdownMenuRadioItem>
+                                    <DropdownMenuRadioItem value="abandoned">
+                                        Abandoned ({getFilterCount('abandoned')})
+                                    </DropdownMenuRadioItem>
+                                </DropdownMenuRadioGroup>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    )}
+
+                    {/* Refresh */}
                     <Button variant="outline" size="sm" onClick={loadJourneys} disabled={isLoading}>
                         <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
                     </Button>
-                    {canStartNewSeason && (
-                        <Button size="sm" onClick={() => setShowNewSeasonDialog(true)}>
-                            <Plus className="h-4 w-4 mr-1" />
-                            Start New Season
-                        </Button>
+                </div>
+            </div>
+
+            {/* Horizontal Timeline */}
+            <div className="relative">
+                <div className="overflow-x-auto pb-4 snap-x snap-mandatory md:snap-none scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
+                    {isLoading ? (
+                        <div className="flex gap-4">
+                            {/* Loading skeletons */}
+                            {[1, 2, 3].map(i => (
+                                <div
+                                    key={i}
+                                    className="flex-shrink-0 w-[280px] md:w-[240px] lg:w-[260px] h-[200px] bg-muted/30 rounded-lg animate-pulse snap-start"
+                                />
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="flex gap-4 min-w-max">
+                            {/* New Journey Card */}
+                            <NewJourneyCard onClick={() => setShowCreateDialog(true)} />
+
+                            {/* Journey Cards */}
+                            {filteredJourneys.map((journey) => (
+                                <JourneyCardMenu
+                                    key={journey.id}
+                                    journey={journey}
+                                    isOwner={isOwner}
+                                    onUpdate={loadJourneys}
+                                >
+                                    <div>
+                                        <JourneyTimelineCard
+                                            journey={journey}
+                                            isActive={selectedJourneyId === journey.id}
+                                            progress={journey.progress}
+                                            totalPages={totalPages}
+                                            onClick={() => handleSelectJourney(journey)}
+                                            onMenuClick={(e) => handleMenuClick(e, journey)}
+                                        />
+                                    </div>
+                                </JourneyCardMenu>
+                            ))}
+
+                            {/* Empty State - No filtered journeys */}
+                            {filteredJourneys.length === 0 && filter !== 'all' && (
+                                <div className="flex-shrink-0 w-[280px] h-[200px] flex items-center justify-center border-2 border-dashed border-muted rounded-lg">
+                                    <div className="text-center text-muted-foreground p-6">
+                                        <p className="text-sm">No {filter} journeys</p>
+                                        <Button
+                                            variant="link"
+                                            size="sm"
+                                            onClick={() => setFilter('all')}
+                                            className="mt-2"
+                                        >
+                                            Show all journeys
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     )}
                 </div>
             </div>
 
-            {isLoading ? (
+            {/* Empty State - No journeys at all */}
+            {!isLoading && journeys.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">
-                    Loading journeys...
-                </div>
-            ) : journeys.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                    <p>No reading journeys yet.</p>
-                    <p className="text-sm mt-2">Start reading to create your first journey!</p>
-                </div>
-            ) : (
-                <div className="space-y-3">
-                    {journeys.map((journey) => (
-                        <JourneyCard
-                            key={journey.id}
-                            journey={journey}
-                            isActive={selectedJourney === journey.id}
-                            isOwner={isOwner}
-                            onSelect={() => setSelectedJourney(journey.id)}
-                        />
-                    ))}
+                    <p>No reading journeys yet</p>
+                    <p className="text-sm mt-2">Click the "+ New Journey" card to start!</p>
                 </div>
             )}
 
-            {/* New Season Dialog */}
-            <Dialog open={showNewSeasonDialog} onOpenChange={setShowNewSeasonDialog}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Start New Reading Season</DialogTitle>
-                        <DialogDescription>
-                            Begin a fresh reading journey for this book. Your previous sessions and notes will be preserved in the archive.
-                        </DialogDescription>
-                    </DialogHeader>
-
-                    <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                            <Label>Who can see this reading season?</Label>
-                            <RadioGroup value={newSeasonVisibility} onValueChange={(v: any) => setNewSeasonVisibility(v)}>
-                                <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="public" id="public" />
-                                    <Label htmlFor="public" className="font-normal cursor-pointer">
-                                        Public - Everyone can see
-                                    </Label>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="connections" id="connections" />
-                                    <Label htmlFor="connections" className="font-normal cursor-pointer">
-                                        Connections - Only friends and followers
-                                    </Label>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="private" id="private" />
-                                    <Label htmlFor="private" className="font-normal cursor-pointer">
-                                        Private - Only me
-                                    </Label>
-                                </div>
-                            </RadioGroup>
-                        </div>
-                    </div>
-
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setShowNewSeasonDialog(false)}>
-                            Cancel
-                        </Button>
-                        <Button onClick={handleStartNewSeason} disabled={isStarting}>
-                            {isStarting ? "Starting..." : "Start Reading"}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            {/* Create Journey Dialog */}
+            <CreateJourneyDialog
+                bookId={bookId}
+                open={showCreateDialog}
+                onOpenChange={setShowCreateDialog}
+                onSuccess={loadJourneys}
+            />
         </div>
     )
 }
