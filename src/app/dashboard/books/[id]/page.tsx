@@ -19,14 +19,20 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { QuickNotesCard } from "@/components/books/quick-notes-card"
 import { ReadingTabContent } from "@/components/reading/reading-tab-content"
 
-export default async function BookPage({ params }: { params: { id: string } }) {
+interface BookPageProps {
+    params: { id: string }
+    searchParams: { journey?: string; tab?: string }
+}
+
+export default async function BookPage({ params, searchParams }: BookPageProps) {
     const user = await getUser()
     if (!user) return notFound()
 
     const supabase = await createClient()
 
-    // Await the params object before accessing properties
+    // Await the params and searchParams objects before accessing properties
     const { id } = await params
+    const { journey: journeyId, tab: defaultTab } = await searchParams
 
     // Fetch book with related data
     const { data: book, error } = await supabase
@@ -72,7 +78,7 @@ export default async function BookPage({ params }: { params: { id: string } }) {
             <Separator />
 
             {/* Main Content Areas */}
-            <Tabs defaultValue="overview" className="w-full">
+            <Tabs defaultValue={defaultTab || "overview"} className="w-full">
                 <TabsList className="grid w-full grid-cols-4 lg:w-[400px]">
                     <TabsTrigger value="overview">Overview</TabsTrigger>
                     <TabsTrigger value="reading">Reading</TabsTrigger>
@@ -106,7 +112,12 @@ export default async function BookPage({ params }: { params: { id: string } }) {
                         </TabsContent>
 
                         <TabsContent value="reading" className="mt-0">
-                            <ReadingTabContent bookId={book.id} userId={user.id} book={book} />
+                            <ReadingTabContent 
+                                bookId={book.id} 
+                                userId={user.id} 
+                                book={book}
+                                initialJourneyId={journeyId}
+                            />
                         </TabsContent>
 
                         <TabsContent value="review" className="mt-0 space-y-6">

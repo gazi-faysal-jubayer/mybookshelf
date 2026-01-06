@@ -29,6 +29,8 @@ import { LogSessionDialog } from "./dialogs/log-session-dialog"
 import { AddThoughtDialog } from "./dialogs/add-thought-dialog"
 import { CompleteJourneyDialog } from "./dialogs/complete-journey-dialog"
 import { AbandonJourneyDialog } from "./dialogs/abandon-journey-dialog"
+import { JourneyHeader } from "./journey-header"
+import { QuickNotesSection } from "./quick-notes-section"
 
 interface SessionViewerProps {
     journey: ReadingJourney | null
@@ -57,6 +59,16 @@ interface ReadingThought {
     page_number: number | null
     chapter: string | null
     contains_spoilers: boolean
+    created_at: string
+    note_type?: string
+    is_starred?: boolean
+}
+
+interface QuickNote {
+    id: string
+    content: string
+    page_number: number | null
+    is_starred: boolean
     created_at: string
 }
 
@@ -145,6 +157,7 @@ export function SessionViewer({ journey, book, onUpdate }: SessionViewerProps) {
     const [stats, setStats] = useState<JourneyStatistics | null>(null)
     const [sessions, setSessions] = useState<ReadingSessionEntry[]>([])
     const [thoughts, setThoughts] = useState<ReadingThought[]>([])
+    const [quickNotes, setQuickNotes] = useState<QuickNote[]>([])
     const [loading, setLoading] = useState(false)
 
     // Dialog states
@@ -181,14 +194,25 @@ export function SessionViewer({ journey, book, onUpdate }: SessionViewerProps) {
                 .eq('journey_id', journey.id)
                 .order('session_date', { ascending: false })
 
+            // Fetch detailed thoughts (excluding quick notes)
             const { data: thoughtsData } = await supabase
                 .from('reading_thoughts')
                 .select('*')
                 .eq('journey_id', journey.id)
+                .or('note_type.is.null,note_type.eq.detailed_thought')
+                .order('created_at', { ascending: false })
+
+            // Fetch quick notes separately
+            const { data: quickNotesData } = await supabase
+                .from('reading_thoughts')
+                .select('id, content, page_number, is_starred, created_at')
+                .eq('journey_id', journey.id)
+                .eq('note_type', 'quick_note')
                 .order('created_at', { ascending: false })
 
             setSessions(sessionsData || [])
             setThoughts(thoughtsData || [])
+            setQuickNotes(quickNotesData || [])
         } catch (error) {
             console.error("Error loading journey data:", error)
         } finally {
@@ -230,29 +254,15 @@ export function SessionViewer({ journey, book, onUpdate }: SessionViewerProps) {
 
     return (
         <div className="space-y-4">
-            {/* Journey Header */}
+            {/* Journey Header - New Component */}
             <Card>
-                <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                        <div>
-                            <div className="flex items-center gap-2 mb-1">
-                                <Badge variant={journey.status === 'active' ? 'default' : 'secondary'}>
-                                    {journey.status}
-                                </Badge>
-                                <Badge variant="outline">{journey.visibility}</Badge>
-                            </div>
-                            <CardTitle className="text-xl">
-                                {journey.session_name || "Unnamed Journey"}
-                            </CardTitle>
-                            <p className="text-sm text-muted-foreground mt-1">
-                                Started {format(new Date(journey.started_at), "MMMM d, yyyy")}
-                                {journey.finished_at && (
-                                    <> · Finished {format(new Date(journey.finished_at), "MMMM d, yyyy")}</>
-                                )}
-                            </p>
-                        </div>
-                    </div>
-                </CardHeader>
+                <CardContent className="pt-6">
+                    <JourneyHeader 
+                        journey={journey}
+                        bookTitle={book.title}
+                        onUpdate={handleDialogSuccess}
+                    />
+                </CardContent>
             </Card>
 
             {loading ? (
@@ -497,6 +507,15 @@ export function SessionViewer({ journey, book, onUpdate }: SessionViewerProps) {
                             </CollapsibleContent>
                         </Card>
                     </Collapsible>
+
+                    {/* 📝 Quick Notes Section */}
+                    <QuickNotesSection
+                        journeyId={journey.id}
+                        bookId={book.id}
+                        notes={quickNotes}
+                        isActive={journey.status === 'active'}
+                        onUpdate={handleDialogSuccess}
+                    />
 
                     {/* ⭐ My Review - if completed */}
                     {journey.status === 'completed' && journey.review && (

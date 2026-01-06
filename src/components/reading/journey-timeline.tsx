@@ -25,6 +25,7 @@ interface JourneyTimelineProps {
     isOwner: boolean
     totalPages?: number
     onJourneySelect?: (journey: ReadingJourney | null) => void
+    initialJourneyId?: string
 }
 
 type FilterType = 'all' | 'active' | 'completed' | 'abandoned'
@@ -38,10 +39,11 @@ export function JourneyTimeline({
     userId,
     isOwner,
     totalPages,
-    onJourneySelect
+    onJourneySelect,
+    initialJourneyId
 }: JourneyTimelineProps) {
     const [journeys, setJourneys] = useState<JourneyWithProgress[]>([])
-    const [selectedJourneyId, setSelectedJourneyId] = useState<string | null>(null)
+    const [selectedJourneyId, setSelectedJourneyId] = useState<string | null>(initialJourneyId || null)
     const [showCreateDialog, setShowCreateDialog] = useState(false)
     const [isLoading, setIsLoading] = useState(true)
     const [filter, setFilter] = useState<FilterType>('all')
@@ -79,8 +81,19 @@ export function JourneyTimeline({
 
             setJourneys(journeysWithProgress)
 
-            // Auto-select active journey or first journey
-            if (!selectedJourneyId) {
+            // Auto-select journey: prioritize initialJourneyId, then active journey, then first journey
+            // If initialJourneyId was provided and exists, select it
+            if (initialJourneyId) {
+                const targetJourney = journeysWithProgress.find(j => j.id === initialJourneyId)
+                if (targetJourney) {
+                    setSelectedJourneyId(targetJourney.id)
+                    onJourneySelect?.(targetJourney)
+                    return
+                }
+            }
+            
+            // Otherwise, select active journey or first journey (only on initial load)
+            if (!selectedJourneyId || !journeysWithProgress.find(j => j.id === selectedJourneyId)) {
                 const active = journeysWithProgress.find(j => j.status === 'active')
                 if (active) {
                     setSelectedJourneyId(active.id)

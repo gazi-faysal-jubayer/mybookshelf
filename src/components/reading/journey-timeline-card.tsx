@@ -4,8 +4,8 @@ import { ReadingJourney } from "@/app/actions/journeys"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { MoreVertical, Globe, Users, Lock } from "lucide-react"
-import { format, formatDistanceToNow } from "date-fns"
+import { MoreVertical, Globe, Users, Lock, BookOpen, CheckCircle2, PauseCircle, Star } from "lucide-react"
+import { format, formatDistanceToNow, differenceInDays } from "date-fns"
 import { cn } from "@/lib/utils"
 
 interface JourneyTimelineCardProps {
@@ -86,6 +86,19 @@ export function JourneyTimelineCard({
     onClick,
     onMenuClick
 }: JourneyTimelineCardProps) {
+    const getStatusIcon = () => {
+        switch (journey.status) {
+            case 'active':
+                return <BookOpen className="h-3 w-3" />
+            case 'completed':
+                return <CheckCircle2 className="h-3 w-3" />
+            case 'abandoned':
+                return <PauseCircle className="h-3 w-3" />
+            default:
+                return null
+        }
+    }
+
     const getStatusBadgeColor = (status: string) => {
         switch (status) {
             case 'active':
@@ -116,57 +129,81 @@ export function JourneyTimelineCard({
 
     const pagesRead = totalPages ? Math.round((progress / 100) * totalPages) : 0
 
+    const getDateDisplay = () => {
+        const startDate = new Date(journey.started_at)
+        
+        if (journey.status === 'completed' && journey.finished_at) {
+            const finishDate = new Date(journey.finished_at)
+            const daysTaken = differenceInDays(finishDate, startDate)
+            return `Finished in ${daysTaken} ${daysTaken === 1 ? 'day' : 'days'}`
+        }
+        
+        if (journey.status === 'abandoned') {
+            return `Stopped at ${Math.round(progress)}%`
+        }
+        
+        const daysAgo = differenceInDays(new Date(), startDate)
+        return daysAgo === 0 ? 'Started today' : `${daysAgo} ${daysAgo === 1 ? 'day' : 'days'} ago`
+    }
+
     return (
         <Card
             onClick={onClick}
             className={cn(
-                "flex-shrink-0 w-[280px] md:w-[240px] lg:w-[260px] h-[200px] cursor-pointer transition-all hover:shadow-lg",
-                isActive && "ring-2 ring-primary shadow-lg scale-[1.02]"
+                "relative flex-shrink-0 w-[240px] min-w-[240px] max-w-[260px] h-[200px] cursor-pointer transition-all duration-200",
+                "hover:shadow-lg hover:-translate-y-0.5",
+                isActive && "ring-2 ring-primary shadow-xl scale-[1.02] bg-accent/30",
+                journey.status === 'active' && !isActive && "border-green-500/30",
+                journey.status === 'completed' && !isActive && "border-blue-500/30"
             )}
         >
-            <CardHeader className="p-4 pb-2">
+            <CardHeader className="p-3 pb-2">
                 <div className="flex items-start justify-between">
-                    <Badge className={cn("text-xs", getStatusBadgeColor(journey.status))}>
-                        {journey.status}
+                    <Badge className={cn("text-xs gap-1", getStatusBadgeColor(journey.status))}>
+                        {getStatusIcon()}
+                        {journey.status === 'active' ? 'Reading' : journey.status}
                     </Badge>
                     <Button
                         variant="ghost"
                         size="sm"
-                        className="h-6 w-6 p-0"
+                        className="h-6 w-6 p-0 opacity-60 hover:opacity-100"
                         onClick={onMenuClick}
                     >
                         <MoreVertical className="h-4 w-4" />
                     </Button>
                 </div>
-                <h3 className="font-semibold text-sm line-clamp-2 mt-2">
-                    {journey.session_name || "Unnamed Journey"}
+                <h3 className="font-semibold text-sm line-clamp-1 mt-1.5">
+                    {journey.session_name || "Reading Journey"}
                 </h3>
             </CardHeader>
 
-            <CardContent className="p-4 pt-0 flex flex-col items-center">
+            <CardContent className="p-3 pt-0 flex flex-col items-center justify-between flex-1">
                 {/* Circular Progress */}
-                <div className="my-2">
-                    <CircularProgress value={progress} size={80} strokeWidth={6} status={journey.status} />
+                <div className="my-1">
+                    <CircularProgress value={progress} size={75} strokeWidth={6} status={journey.status} />
                 </div>
 
-                {/* Date Info */}
+                {/* Info */}
                 <div className="text-xs text-center text-muted-foreground space-y-0.5 w-full">
-                    <p className="truncate">
-                        {journey.status === 'completed' && journey.finished_at
-                            ? `Finished ${format(new Date(journey.finished_at), "MMM d, yyyy")}`
-                            : `Started ${formatDistanceToNow(new Date(journey.started_at), { addSuffix: true })}`
-                        }
+                    <p className="truncate text-muted-foreground">
+                        {getDateDisplay()}
                     </p>
                     <p className="font-medium text-foreground">
-                        {pagesRead}{totalPages ? `/${totalPages}` : ''} pages
+                        {journey.status === 'completed' && journey.rating ? (
+                            <span className="flex items-center justify-center gap-1">
+                                {totalPages} pages • {journey.rating}<Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                            </span>
+                        ) : (
+                            <>{pagesRead}{totalPages ? `/${totalPages}` : ''} pages • {Math.round(progress)}%</>
+                        )}
                     </p>
                 </div>
-
-                {/* Privacy Icon */}
-                <div className="absolute bottom-3 right-3 text-muted-foreground">
-                    {getVisibilityIcon()}
-                </div>
             </CardContent>
+
+            {/* Privacy Icon - Bottom Right */}
+            <div className="absolute bottom-2 right-2 text-muted-foreground/60">
+                {getVisibilityIcon()}
+            </div>
         </Card>
     )
 }

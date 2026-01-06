@@ -92,6 +92,35 @@ export async function createNewJourney(
 
         if (error) throw new Error(error.message)
 
+        // Post activity to feed (if visibility allows)
+        if (visibility !== 'private') {
+            try {
+                await supabase.from('activities').insert({
+                    user_id: user.id,
+                    activity_type: 'book_started',
+                    book_id: bookId,
+                    is_public: visibility === 'public',
+                    metadata: {
+                        journey_id: journey.id,
+                        session_name: finalSessionName
+                    }
+                })
+            } catch (activityError) {
+                // Don't fail the journey creation if activity posting fails
+                console.error("Failed to create activity:", activityError)
+            }
+        }
+
+        // Update book reading status
+        await supabase
+            .from("books")
+            .update({
+                reading_status: "currently_reading",
+                reading_started_at: new Date().toISOString()
+            })
+            .eq("id", bookId)
+            .eq("user_id", user.id)
+
         revalidatePath(`/dashboard/books/${bookId}`)
         revalidatePath("/dashboard")
 
@@ -219,6 +248,16 @@ export async function completeJourney(
 
         const supabase = await createClient()
 
+        // Get the journey first to check visibility
+        const { data: existingJourney } = await supabase
+            .from("reading_journeys")
+            .select("book_id, visibility, session_name")
+            .eq("id", journeyId)
+            .eq("user_id", user.id)
+            .single()
+
+        if (!existingJourney) throw new Error("Journey not found")
+
         const { error } = await supabase
             .from("reading_journeys")
             .update({
@@ -232,17 +271,37 @@ export async function completeJourney(
 
         if (error) throw new Error(error.message)
 
-        // Get journey details for revalidation
-        const { data: journey } = await supabase
-            .from("reading_journeys")
-            .select("book_id")
-            .eq("id", journeyId)
-            .single()
-
-        if (journey) {
-            revalidatePath(`/dashboard/books/${journey.book_id}`)
-            revalidatePath("/dashboard")
+        // Post activity to feed (if visibility allows)
+        if (existingJourney.visibility !== 'private') {
+            try {
+                await supabase.from('activities').insert({
+                    user_id: user.id,
+                    activity_type: 'book_finished',
+                    book_id: existingJourney.book_id,
+                    is_public: existingJourney.visibility === 'public',
+                    metadata: {
+                        journey_id: journeyId,
+                        session_name: existingJourney.session_name,
+                        rating: rating || null
+                    }
+                })
+            } catch (activityError) {
+                console.error("Failed to create activity:", activityError)
+            }
         }
+
+        // Update book reading status
+        await supabase
+            .from("books")
+            .update({
+                reading_status: "completed",
+                reading_finished_at: new Date().toISOString()
+            })
+            .eq("id", existingJourney.book_id)
+            .eq("user_id", user.id)
+
+        revalidatePath(`/dashboard/books/${existingJourney.book_id}`)
+        revalidatePath("/dashboard")
 
         return { success: true }
     } catch (error) {
@@ -575,5 +634,143 @@ export async function abandonJourney(
     } catch (error) {
         console.error("Error abandoning journey:", error)
         return { success: false, error: error instanceof Error ? error.message : "Failed to abandon journey" }
+    }
+}
+
+// Quick Notes Actions
+
+interface AddQuickNoteParams {
+    journeyId: string
+    bookId: string
+    content: string
+    pageNumber?: number | null
+}
+
+// Add a quick note (stored as reading_thought with note_type = 'quick_note')
+export async function addQuickNote(params: AddQuickNoteParams): Promise<{ success: boolean; noteId?: string; error?: string }> {
+    try {
+        const user = await getUser()
+        if (!user) throw new Error("Not authenticated")
+
+        const supabase = await createClient()
+
+        // Validate content length
+        if (params.content.length > 280) {
+            return { success: false, error: "Quick notes must be 280 characters or less" }
+        }
+
+        const { data: note, error } = await supabase
+            .from("reading_thoughts")
+            .insert({
+                journey_id: params.journeyId,
+                book_id: params.bookId,
+                user_id: user.id,
+                content: params.content,
+                page_number: params.pageNumber || null,
+                note_type: 'quick_note',
+                is_starred: false,
+            })
+            .select()
+            .single()
+
+        if (error) throw new Error(error.message)
+
+        revalidatePath(`/dashboard/books/${params.bookId}`)
+
+        return { success: true, noteId: note.id }
+    } catch (error) {
+        console.error("Error adding quick note:", error)
+        return { success: false, error: error instanceof Error ? error.message : "Failed to add note" }
+    }
+}
+
+// Delete a quick note
+export async function deleteQuickNote(noteId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+        const user = await getUser()
+        if (!user) throw new Error("Not authenticated")
+
+        const supabase = await createClient()
+
+        const { data: note, error } = await supabase
+            .from("reading_thoughts")
+            .delete()
+            .eq("id", noteId)
+            .eq("user_id", user.id)
+            .select("book_id")
+            .single()
+
+        if (error) throw new Error(error.message)
+
+        if (note) {
+            revalidatePath(`/dashboard/books/${note.book_id}`)
+        }
+
+        return { success: true }
+    } catch (error) {
+        console.error("Error deleting quick note:", error)
+        return { success: false, error: error instanceof Error ? error.message : "Failed to delete note" }
+    }
+}
+
+// Toggle starred status on a note
+export async function toggleNoteStarred(noteId: string, isStarred: boolean): Promise<{ success: boolean; error?: string }> {
+    try {
+        const user = await getUser()
+        if (!user) throw new Error("Not authenticated")
+
+        const supabase = await createClient()
+
+        const { data: note, error } = await supabase
+            .from("reading_thoughts")
+            .update({ is_starred: isStarred })
+            .eq("id", noteId)
+            .eq("user_id", user.id)
+            .select("book_id")
+            .single()
+
+        if (error) throw new Error(error.message)
+
+        if (note) {
+            revalidatePath(`/dashboard/books/${note.book_id}`)
+        }
+
+        return { success: true }
+    } catch (error) {
+        console.error("Error toggling note starred:", error)
+        return { success: false, error: error instanceof Error ? error.message : "Failed to update note" }
+    }
+}
+
+// Convert a quick note to a detailed thought
+export async function convertNoteToThought(noteId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+        const user = await getUser()
+        if (!user) throw new Error("Not authenticated")
+
+        const supabase = await createClient()
+
+        const { data: note, error } = await supabase
+            .from("reading_thoughts")
+            .update({
+                note_type: 'detailed_thought',
+                is_starred: false // Reset starred when converting
+            })
+            .eq("id", noteId)
+            .eq("user_id", user.id)
+            .eq("note_type", "quick_note")
+            .select("book_id")
+            .single()
+
+        if (error) throw new Error(error.message)
+
+        if (note) {
+            revalidatePath(`/dashboard/books/${note.book_id}`)
+        }
+
+        return { success: true }
+    } catch (error) {
+        console.error("Error converting note to thought:", error)
+        return { success: false, error: error instanceof Error ? error.message : "Failed to convert note" }
     }
 }

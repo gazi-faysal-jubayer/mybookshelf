@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
+import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import { ReadingJourney } from "@/app/actions/journeys"
 import { JourneyTimeline } from "@/components/reading/journey-timeline"
 import { SessionViewer } from "@/components/reading/session-viewer"
@@ -10,10 +11,33 @@ interface ReadingTabContentProps {
     userId: string
     book: any
     isOwner?: boolean
+    initialJourneyId?: string
 }
 
-export function ReadingTabContent({ bookId, userId, book, isOwner = false }: ReadingTabContentProps) {
+export function ReadingTabContent({ 
+    bookId, 
+    userId, 
+    book, 
+    isOwner = false,
+    initialJourneyId 
+}: ReadingTabContentProps) {
     const [selectedJourney, setSelectedJourney] = useState<ReadingJourney | null>(null)
+    const router = useRouter()
+    const pathname = usePathname()
+    const searchParams = useSearchParams()
+
+    // Update URL when journey is selected
+    const handleJourneySelect = useCallback((journey: ReadingJourney | null) => {
+        setSelectedJourney(journey)
+        
+        // Update URL with journey ID
+        if (journey) {
+            const params = new URLSearchParams(searchParams.toString())
+            params.set('journey', journey.id)
+            params.set('tab', 'reading')
+            router.replace(`${pathname}?${params.toString()}`, { scroll: false })
+        }
+    }, [router, pathname, searchParams])
 
     return (
         <div className="space-y-6">
@@ -22,7 +46,8 @@ export function ReadingTabContent({ bookId, userId, book, isOwner = false }: Rea
                 userId={userId}
                 isOwner={isOwner}
                 totalPages={book?.pages}
-                onJourneySelect={setSelectedJourney}
+                onJourneySelect={handleJourneySelect}
+                initialJourneyId={initialJourneyId}
             />
 
             <SessionViewer
