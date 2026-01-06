@@ -116,6 +116,7 @@ export default async function BookPage({ params, searchParams }: BookPageProps) 
                                 bookId={book.id} 
                                 userId={user.id} 
                                 book={book}
+                                isOwner={true}
                                 initialJourneyId={journeyId}
                             />
                         </TabsContent>

@@ -95,8 +95,9 @@ export function CreateJourneyDialog({
                 setJourneyName("")
                 setVisibility('connections')
                 setConflictJourneyId(null)
+                // Call onSuccess BEFORE closing dialog to ensure refresh triggers
+                await onSuccess?.()
                 onOpenChange(false)
-                onSuccess?.()
             } else {
                 // If error is about active journey, show archive option
                 if (result.error?.includes("already have an active")) {

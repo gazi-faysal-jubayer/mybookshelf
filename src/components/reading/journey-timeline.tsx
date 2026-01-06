@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import { ReadingJourney, getAllJourneys } from "@/app/actions/journeys"
 import { createClient } from "@/lib/supabase/client"
 import { JourneyTimelineCard } from "./journey-timeline-card"
@@ -42,6 +43,7 @@ export function JourneyTimeline({
     onJourneySelect,
     initialJourneyId
 }: JourneyTimelineProps) {
+    const router = useRouter()
     const [journeys, setJourneys] = useState<JourneyWithProgress[]>([])
     const [selectedJourneyId, setSelectedJourneyId] = useState<string | null>(initialJourneyId || null)
     const [showCreateDialog, setShowCreateDialog] = useState(false)
@@ -53,9 +55,11 @@ export function JourneyTimeline({
     }, [bookId, userId])
 
     const loadJourneys = async () => {
+        console.log("loadJourneys called for bookId:", bookId, "userId:", userId)
         setIsLoading(true)
         try {
             const data = await getAllJourneys(bookId, userId)
+            console.log("loadJourneys received data:", data?.length || 0, "journeys")
 
             // Calculate progress for each journey
             const supabase = createClient()
@@ -244,6 +248,7 @@ export function JourneyTimeline({
                 <div className="text-center py-8 text-muted-foreground">
                     <p>No reading journeys yet</p>
                     <p className="text-sm mt-2">Click the "+ New Journey" card to start!</p>
+                    <p className="text-xs mt-4 text-red-500">Debug: bookId={bookId}, userId={userId}</p>
                 </div>
             )}
 
@@ -252,7 +257,11 @@ export function JourneyTimeline({
                 bookId={bookId}
                 open={showCreateDialog}
                 onOpenChange={setShowCreateDialog}
-                onSuccess={loadJourneys}
+                onSuccess={async () => {
+                    // Reload journeys and refresh router
+                    await loadJourneys()
+                    router.refresh()
+                }}
                 activeJourneyId={journeys.find(j => j.status === 'active')?.id}
             />
         </div>
