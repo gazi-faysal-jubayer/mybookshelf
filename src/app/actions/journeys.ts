@@ -319,26 +319,51 @@ export async function archiveJourney(journeyId: string): Promise<{ success: bool
 
         const supabase = await createClient()
 
+        // First get journey details to check its current status
+        const { data: currentJourney } = await supabase
+            .from("reading_journeys")
+            .select("book_id, status")
+            .eq("id", journeyId)
+            .eq("user_id", user.id)
+            .single()
+
+        if (!currentJourney) {
+            return { success: false, error: "Journey not found" }
+        }
+
+        // Archive journey - can archive active, completed, or abandoned journeys
         const { error } = await supabase
             .from("reading_journeys")
             .update({ status: "archived" })
             .eq("id", journeyId)
             .eq("user_id", user.id)
-            .in("status", ["completed", "abandoned"])
+            .in("status", ["active", "completed", "abandoned"])
 
         if (error) throw new Error(error.message)
 
-        // Get journey details for revalidation
-        const { data: journey } = await supabase
-            .from("reading_journeys")
-            .select("book_id")
-            .eq("id", journeyId)
-            .single()
+        // If we archived an active journey, we may need to update the book's reading status
+        // Check if there are any other active journeys for this book
+        if (currentJourney.status === "active") {
+            const { data: otherActiveJourneys } = await supabase
+                .from("reading_journeys")
+                .select("id")
+                .eq("book_id", currentJourney.book_id)
+                .eq("user_id", user.id)
+                .eq("status", "active")
+                .limit(1)
 
-        if (journey) {
-            revalidatePath(`/dashboard/books/${journey.book_id}`)
-            revalidatePath("/dashboard")
+            // If no other active journeys, update book status
+            if (!otherActiveJourneys || otherActiveJourneys.length === 0) {
+                await supabase
+                    .from("books")
+                    .update({ reading_status: "to_read" })
+                    .eq("id", currentJourney.book_id)
+                    .eq("user_id", user.id)
+            }
         }
+
+        revalidatePath(`/dashboard/books/${currentJourney.book_id}`)
+        revalidatePath("/dashboard")
 
         return { success: true }
     } catch (error) {
