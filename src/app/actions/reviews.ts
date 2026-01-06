@@ -43,25 +43,29 @@ export async function addDuringReadingThought(bookId: string, data: {
     chapter?: string
     content: string
     contains_spoilers?: boolean
-}) {
+}, journeyId?: string) {
     const user = await getUser()
     if (!user) throw new Error("Not authenticated")
 
     const supabase = await createClient()
 
-    // Get or create active journey
-    let activeJourney = await getActiveJourney(bookId)
-    if (!activeJourney) {
-        const result = await createNewJourney(bookId, 'public')
-        if (result.success && result.journeyId) {
-            activeJourney = await getActiveJourney(bookId)
+    // Use provided journeyId or fall back to getting/creating active journey
+    let activeJourneyId = journeyId
+    if (!activeJourneyId) {
+        let activeJourney = await getActiveJourney(bookId)
+        if (!activeJourney) {
+            const result = await createNewJourney(bookId, 'public')
+            if (result.success && result.journeyId) {
+                activeJourney = await getActiveJourney(bookId)
+            }
         }
+        activeJourneyId = activeJourney?.id || null
     }
 
     const { error } = await supabase.from("reading_thoughts").insert({
         book_id: bookId,
         user_id: user.id,
-        journey_id: activeJourney?.id || null,
+        journey_id: activeJourneyId,
         page_number: data.page_number,
         chapter: data.chapter,
         content: data.content,

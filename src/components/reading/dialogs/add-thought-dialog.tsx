@@ -20,6 +20,7 @@ import { AlertTriangle } from "lucide-react"
 
 interface AddThoughtDialogProps {
     bookId: string
+    journeyId?: string
     open: boolean
     onOpenChange: (open: boolean) => void
     onSuccess?: () => void
@@ -27,6 +28,7 @@ interface AddThoughtDialogProps {
 
 export function AddThoughtDialog({
     bookId,
+    journeyId,
     open,
     onOpenChange,
     onSuccess
@@ -60,7 +62,7 @@ export function AddThoughtDialog({
                 page_number: pageNumber ? parseInt(pageNumber) : undefined,
                 chapter: chapter.trim() || undefined,
                 contains_spoilers: containsSpoilers
-            })
+            }, journeyId)
 
             if (result.success) {
                 toast.success("Thought added!")

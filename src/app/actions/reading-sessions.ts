@@ -79,8 +79,8 @@ export async function startReading(bookId: string, totalPages?: number, visibili
 }
 
 // Add a reading session
-export async function addReadingSession(bookId: string, data: AddSessionData) {
-    logToFile("Adding reading session START", { bookId, data })
+export async function addReadingSession(bookId: string, data: AddSessionData, journeyId?: string) {
+    logToFile("Adding reading session START", { bookId, data, journeyId })
     try {
         const user = await getUser()
         if (!user) {
@@ -116,25 +116,28 @@ export async function addReadingSession(bookId: string, data: AddSessionData) {
                 .eq("user_id", user.id)
         }
 
-        // Get or create active journey
-        let activeJourney = await getActiveJourney(bookId)
-        if (!activeJourney) {
-            const result = await createNewJourney(bookId, 'public')
-            if (result.success && result.journeyId) {
-                activeJourney = await getActiveJourney(bookId)
+        // Use provided journeyId or fall back to getting/creating active journey
+        let activeJourneyId = journeyId
+        if (!activeJourneyId) {
+            let activeJourney = await getActiveJourney(bookId)
+            if (!activeJourney) {
+                const result = await createNewJourney(bookId, 'public')
+                if (result.success && result.journeyId) {
+                    activeJourney = await getActiveJourney(bookId)
+                }
             }
+            if (!activeJourney) {
+                throw new Error("Failed to create or get active journey")
+            }
+            activeJourneyId = activeJourney.id
         }
 
-        if (!activeJourney) {
-            throw new Error("Failed to create or get active journey")
-        }
-
-        logToFile("Active journey found/created", { journeyId: activeJourney.id })
+        logToFile("Active journey found/created", { journeyId: activeJourneyId })
 
         const insertData = {
             book_id: bookId,
             user_id: user.id,
-            journey_id: activeJourney.id,
+            journey_id: activeJourneyId,
             session_date: data.session_date?.toISOString().split("T")[0] || new Date().toISOString().split("T")[0],
             start_page: data.start_page,
             end_page: data.end_page,

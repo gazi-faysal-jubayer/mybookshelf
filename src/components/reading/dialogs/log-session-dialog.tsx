@@ -27,6 +27,7 @@ import { format } from "date-fns"
 
 interface LogSessionDialogProps {
     bookId: string
+    journeyId?: string
     open: boolean
     onOpenChange: (open: boolean) => void
     onSuccess?: () => void
@@ -43,6 +44,7 @@ const MOOD_OPTIONS = [
 
 export function LogSessionDialog({
     bookId,
+    journeyId,
     open,
     onOpenChange,
     onSuccess,
@@ -103,7 +105,7 @@ export function LogSessionDialog({
                 time_spent_minutes: durationMinutes ? parseInt(durationMinutes) : undefined,
                 mood: mood || undefined,
                 notes: notes.trim() || undefined
-            })
+            }, journeyId)
 
             if (result.success) {
                 toast.success(`Logged ${end - start} pages!`)

@@ -552,6 +552,7 @@ export function SessionViewer({ journey, book, onUpdate }: SessionViewerProps) {
             {/* Dialogs */}
             <LogSessionDialog
                 bookId={book.id}
+                journeyId={journey.id}
                 open={showLogSessionDialog}
                 onOpenChange={setShowLogSessionDialog}
                 onSuccess={handleDialogSuccess}
@@ -560,6 +561,7 @@ export function SessionViewer({ journey, book, onUpdate }: SessionViewerProps) {
 
             <AddThoughtDialog
                 bookId={book.id}
+                journeyId={journey.id}
                 open={showAddThoughtDialog}
                 onOpenChange={setShowAddThoughtDialog}
                 onSuccess={handleDialogSuccess}
