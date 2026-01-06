@@ -49,11 +49,17 @@ export function CreateJourneyDialog({
     const [isArchiving, setIsArchiving] = useState(false)
 
     const handleArchiveAndCreate = async () => {
-        if (!activeJourneyId) return
+        if (!activeJourneyId) {
+            toast.error("No active journey found")
+            console.error("activeJourneyId is missing:", activeJourneyId)
+            return
+        }
 
+        console.log("Starting archive for journey:", activeJourneyId)
         setIsArchiving(true)
         try {
             const archiveResult = await archiveJourney(activeJourneyId)
+            console.log("Archive result:", archiveResult)
 
             if (archiveResult.success) {
                 toast.success("Active journey archived")
@@ -64,6 +70,7 @@ export function CreateJourneyDialog({
                 toast.error(archiveResult.error || "Failed to archive journey")
             }
         } catch (error) {
+            console.error("Archive error:", error)
             toast.error("Failed to archive journey")
         } finally {
             setIsArchiving(false)
@@ -71,6 +78,7 @@ export function CreateJourneyDialog({
     }
 
     const handleCreate = async () => {
+        console.log("handleCreate called with:", { bookId, visibility, journeyName })
         setIsCreating(true)
         try {
             const result = await createNewJourney(
@@ -78,6 +86,7 @@ export function CreateJourneyDialog({
                 visibility,
                 journeyName.trim() || undefined
             )
+            console.log("Create journey result:", result)
 
             if (result.success) {
                 toast.success("New reading journey started!")
@@ -88,12 +97,14 @@ export function CreateJourneyDialog({
             } else {
                 // If error is about active journey, show archive option
                 if (result.error?.includes("already have an active")) {
+                    console.log("Active journey detected, showing archive dialog")
                     setShowArchiveConfirm(true)
                 } else {
                     toast.error(result.error || "Failed to create journey")
                 }
             }
         } catch (error) {
+            console.error("Create journey error:", error)
             toast.error("Failed to create journey")
         } finally {
             setIsCreating(false)
@@ -206,13 +217,16 @@ export function CreateJourneyDialog({
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel disabled={isArchiving}>Keep Current</AlertDialogCancel>
-                        <AlertDialogAction
-                            onClick={handleArchiveAndCreate}
+                        <Button
+                            onClick={(e) => {
+                                e.preventDefault()
+                                handleArchiveAndCreate()
+                            }}
                             disabled={isArchiving}
                             className="bg-primary hover:bg-primary/90"
                         >
                             {isArchiving ? "Archiving..." : "Archive & Start New"}
-                        </AlertDialogAction>
+                        </Button>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
