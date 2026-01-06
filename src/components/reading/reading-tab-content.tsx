@@ -22,6 +22,7 @@ export function ReadingTabContent({
     initialJourneyId 
 }: ReadingTabContentProps) {
     const [selectedJourney, setSelectedJourney] = useState<ReadingJourney | null>(null)
+    const [refreshKey, setRefreshKey] = useState(0)
     const router = useRouter()
     const pathname = usePathname()
     const searchParams = useSearchParams()
@@ -51,13 +52,17 @@ export function ReadingTabContent({
             />
 
             <SessionViewer
+                key={refreshKey}
                 journey={selectedJourney}
                 book={{
                     id: bookId,
                     title: book?.title || '',
                     pages: book?.pages || null
                 }}
-                onUpdate={() => setSelectedJourney(null)}
+                onUpdate={() => {
+                    setRefreshKey(prev => prev + 1)
+                    router.refresh()
+                }}
             />
         </div>
     )

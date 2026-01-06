@@ -200,8 +200,8 @@ export function JourneyCardMenu({ journey, isOwner, children, onUpdate }: Journe
 
                     <DropdownMenuSeparator />
 
-                    {/* Resume (if abandoned/completed) */}
-                    {(journey.status === 'abandoned' || journey.status === 'completed') && (
+                    {/* Resume (if abandoned/completed/archived) */}
+                    {(journey.status === 'abandoned' || journey.status === 'completed' || journey.status === 'archived') && (
                         <DropdownMenuItem onClick={handleResume}>
                             <PlayCircle className="h-4 w-4 mr-2" />
                             Resume Reading

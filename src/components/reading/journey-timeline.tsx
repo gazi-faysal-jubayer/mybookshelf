@@ -29,7 +29,7 @@ interface JourneyTimelineProps {
     initialJourneyId?: string
 }
 
-type FilterType = 'all' | 'active' | 'completed' | 'abandoned'
+type FilterType = 'all' | 'active' | 'completed' | 'abandoned' | 'archived'
 
 interface JourneyWithProgress extends ReadingJourney {
     progress: number
@@ -168,6 +168,9 @@ export function JourneyTimeline({
                                     </DropdownMenuRadioItem>
                                     <DropdownMenuRadioItem value="abandoned">
                                         Abandoned ({getFilterCount('abandoned')})
+                                    </DropdownMenuRadioItem>
+                                    <DropdownMenuRadioItem value="archived">
+                                        Archived ({getFilterCount('archived')})
                                     </DropdownMenuRadioItem>
                                 </DropdownMenuRadioGroup>
                             </DropdownMenuContent>
