@@ -10,6 +10,7 @@ import { JourneyCardMenu } from "./journey-card-menu"
 import { CreateJourneyDialog } from "./dialogs/create-journey-dialog"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { JourneyCardSkeleton } from "@/components/ui/loaders"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -186,10 +187,7 @@ export function JourneyTimeline({
                         <div className="flex gap-4">
                             {/* Loading skeletons */}
                             {[1, 2, 3].map(i => (
-                                <div
-                                    key={i}
-                                    className="flex-shrink-0 w-[280px] md:w-[240px] lg:w-[260px] h-[200px] bg-muted/30 rounded-lg animate-pulse snap-start"
-                                />
+                                <JourneyCardSkeleton key={i} />
                             ))}
                         </div>
                     ) : (

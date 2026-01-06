@@ -16,6 +16,7 @@ import { QuickNotesCardWithJourney } from "@/components/books/quick-notes-card-j
 import { ReadingProgressCardWithJourney } from "@/components/books/reading-progress-card-journey"
 import { ReadingJourney, getJourneyStats } from "@/app/actions/journeys"
 import { createClient } from "@/lib/supabase/client"
+import { TabLoader, ReadingProgressSkeleton, QuickNotesSkeleton, SessionViewerSkeleton } from "@/components/ui/loaders"
 
 interface BookPageClientProps {
     book: any
@@ -38,6 +39,8 @@ export function BookPageClient({
     const [journeyThoughts, setJourneyThoughts] = useState<any[]>([])
     const [journeyPagesRead, setJourneyPagesRead] = useState<number>(0)
     const [refreshKey, setRefreshKey] = useState(0)
+    const [isJourneyLoading, setIsJourneyLoading] = useState(false)
+    const [isTabLoading, setIsTabLoading] = useState(false)
     const router = useRouter()
     const pathname = usePathname()
     const searchParams = useSearchParams()
@@ -47,8 +50,13 @@ export function BookPageClient({
     // Load journey data when journey changes
     useEffect(() => {
         if (selectedJourney) {
-            loadJourneyThoughts(selectedJourney.id)
-            loadJourneyStats(selectedJourney.id)
+            setIsJourneyLoading(true)
+            Promise.all([
+                loadJourneyThoughts(selectedJourney.id),
+                loadJourneyStats(selectedJourney.id)
+            ]).finally(() => {
+                setIsJourneyLoading(false)
+            })
         } else {
             setJourneyThoughts([])
             setJourneyPagesRead(0)
@@ -85,12 +93,15 @@ export function BookPageClient({
     }, [router, pathname, searchParams])
 
     const handleTabChange = (value: string) => {
+        setIsTabLoading(true)
         const params = new URLSearchParams(searchParams.toString())
         params.set('tab', value)
         if (selectedJourney) {
             params.set('journey', selectedJourney.id)
         }
         router.replace(`${pathname}?${params.toString()}`, { scroll: false })
+        // Short delay to show loading state
+        setTimeout(() => setIsTabLoading(false), 150)
     }
 
     const handleUpdate = () => {
@@ -143,12 +154,16 @@ export function BookPageClient({
 
                             {/* Reading Progress - Journey aware */}
                             {book.reading_status === "currently_reading" && (
-                                <ReadingProgressCardWithJourney 
-                                    book={book} 
-                                    journey={selectedJourney}
-                                    journeyPagesRead={journeyPagesRead}
-                                    onUpdate={handleUpdate}
-                                />
+                                isJourneyLoading ? (
+                                    <ReadingProgressSkeleton />
+                                ) : (
+                                    <ReadingProgressCardWithJourney 
+                                        book={book} 
+                                        journey={selectedJourney}
+                                        journeyPagesRead={journeyPagesRead}
+                                        onUpdate={handleUpdate}
+                                    />
+                                )
                             )}
                         </TabsContent>
 
@@ -235,12 +250,16 @@ export function BookPageClient({
                     {/* Right Column - Always Visible */}
                     <div className="space-y-6">
                         {/* Quick Notes - Journey aware */}
-                        <QuickNotesCardWithJourney 
-                            bookId={book.id} 
-                            journeyId={selectedJourney?.id}
-                            thoughts={displayThoughts}
-                            onUpdate={handleUpdate}
-                        />
+                        {isJourneyLoading ? (
+                            <QuickNotesSkeleton />
+                        ) : (
+                            <QuickNotesCardWithJourney 
+                                bookId={book.id} 
+                                journeyId={selectedJourney?.id}
+                                thoughts={displayThoughts}
+                                onUpdate={handleUpdate}
+                            />
+                        )}
 
                         {/* Ownership Info */}
                         <Card>
