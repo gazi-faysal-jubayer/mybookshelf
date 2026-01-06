@@ -240,6 +240,7 @@ export function JourneyTimeline({
                 open={showCreateDialog}
                 onOpenChange={setShowCreateDialog}
                 onSuccess={loadJourneys}
+                activeJourneyId={journeys.find(j => j.status === 'active')?.id}
             />
         </div>
     )
