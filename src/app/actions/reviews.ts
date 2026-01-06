@@ -59,13 +59,13 @@ export async function addDuringReadingThought(bookId: string, data: {
                 activeJourney = await getActiveJourney(bookId)
             }
         }
-        activeJourneyId = activeJourney?.id || null
+        activeJourneyId = activeJourney?.id
     }
 
     const { error } = await supabase.from("reading_thoughts").insert({
         book_id: bookId,
         user_id: user.id,
-        journey_id: activeJourneyId,
+        journey_id: activeJourneyId || null,
         page_number: data.page_number,
         chapter: data.chapter,
         content: data.content,
