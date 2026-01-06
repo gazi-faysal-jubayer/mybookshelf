@@ -173,27 +173,27 @@ export async function getAllJourneys(
     userId?: string
 ): Promise<ReadingJourney[]> {
     try {
-        const user = await getUser()
-        if (!user) {
-            console.error("getAllJourneys: No authenticated user")
+        // Create client first and use it for both auth and queries
+        const supabase = await createClient()
+        
+        // Get authenticated user
+        const { data: { user }, error: authError } = await supabase.auth.getUser()
+        if (authError || !user) {
+            console.error("getAllJourneys: No authenticated user", authError?.message)
             return []
         }
         
-        console.log("getAllJourneys called - bookId:", bookId, "userId:", userId, "auth user:", user.id)
-        
-        const supabase = await createClient()
+        console.log("getAllJourneys called - bookId:", bookId, "filterUserId:", userId, "auth user:", user.id)
 
-        // First try a simple query to check if data exists
-        const { data: simpleData, error: simpleError } = await supabase
+        // First, try a simple query without joins to test RLS
+        const { data: testData, error: testError } = await supabase
             .from("reading_journeys")
-            .select("id, status, session_name, user_id")
+            .select("id, status, session_name")
             .eq("book_id", bookId)
         
-        console.log("Simple query result:", simpleData?.length || 0, "journeys, error:", simpleError?.message || "none")
-        if (simpleData) {
-            simpleData.forEach(j => console.log("  - Journey:", j.id, j.status, j.session_name, "user:", j.user_id))
-        }
+        console.log("Test query (no joins):", testData?.length || 0, "journeys, error:", testError?.message || "none")
 
+        // Query journeys - RLS will filter based on auth.uid()
         let query = supabase
             .from("reading_journeys")
             .select(`
@@ -214,13 +214,12 @@ export async function getAllJourneys(
         const { data, error } = await query
 
         if (error) {
-            console.error("Error fetching journeys:", error)
+            console.error("Error fetching journeys:", error.message, error.details, error.hint)
             return []
         }
         
         console.log(`getAllJourneys: Found ${data?.length || 0} journeys for book ${bookId}`)
 
-        // Privacy filtering is handled by RLS policies
         return data || []
     } catch (error) {
         console.error("Error in getAllJourneys:", error)
