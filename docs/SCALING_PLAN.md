@@ -59,7 +59,7 @@ MyBookshelf is a personal library and social reading app. Users can:
 
 | Area | Current state |
 |---|---|
-| README | A 13-byte stub (`# myBookshelf`) |
+| README | First version written (P2-1) |
 | Developer and AI docs | No CLAUDE.md, no `.env.example` |
 | Tests | None. There is no framework, and `test/` holds only one image |
 | CI | None (`.github/` does not exist) |
@@ -207,7 +207,7 @@ Put P0-1 to P0-4 into one migration: `supabase/migrations/020_security_fixes.sql
 
 ## P2 — Developer tooling (README, hooks, AI skills, tests, CI)
 
-- [ ] **P2-1 README.md**
+- [x] **P2-1 README.md** — done (first version). Update the setup steps once P2-2 and P2-8 land.
   - **Why:** the current README is a stub, so new contributors cannot set the project up.
   - **How:** cover what the app does, its features, the stack, and setup steps: create a Supabase project, fill in `.env.local` from `.env.example`, run the migrations in order, then `npm install` and `npm run dev`. Also include the scripts, the folder map from §1, contribution rules, and a link to this plan.
   - **Done when:** a new developer can run the app locally from the README alone.
